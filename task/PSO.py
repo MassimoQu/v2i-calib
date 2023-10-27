@@ -5,7 +5,7 @@
 
 import math
 import numpy as np
-from utils.matrix_utils import convert_T_to_6DOF, convert_6DOF_to_T
+from utils import convert_T_to_6DOF, convert_6DOF_to_T
 
 
 

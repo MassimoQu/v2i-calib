@@ -1,5 +1,6 @@
 from scipy.spatial.transform import Rotation
 import numpy as np
+import time
 
 def convert_T_to_6DOF(T):
     R = T[:3, :3]
@@ -17,4 +18,15 @@ def convert_6DOF_to_T(x):
     T[:3, :3] = R
     T[:3, 3] = t
     return T
+
+def get_time(f):
+
+    def inner(*arg,**kwarg):
+        print('开始计时')
+        s_time = time.time()
+        res = f(*arg,**kwarg)
+        e_time = time.time()
+        print('耗时：{}秒'.format(e_time - s_time))
+        return res
+    return inner
 

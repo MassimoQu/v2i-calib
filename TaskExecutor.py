@@ -1,10 +1,9 @@
-from object.reader import Reader
+from task.Task import Task
 
 class TaskExecutor:
     def __init__(self, task):
         self.task = task
-        self.reader = Reader(task.file_path)
-
+        
     def execute(self):
         self.task.execute()
         
