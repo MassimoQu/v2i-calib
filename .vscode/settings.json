@@ -1,5 +1,7 @@
 {
     "python.analysis.extraPaths": [
-        "./task"
+        "./task",
+        "./reader",
+        "./visualize"
     ]
 }

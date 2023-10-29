@@ -3,7 +3,7 @@ import math
 import matplotlib.pyplot as plt
 
 from Task import Task
-from Reader import Reader
+from reader.Reader import Reader
 from PSO import PSO
 from calculate_IoU import box3d_iou
 from utils import get_time

@@ -216,7 +216,7 @@ def get_cam_8_points(labels, calib_lidar2cam_path):
     return camera_8_points_list
 
 
-def vis_label_in_img(camera_8_points_list, img_path, path_camera_intrinsic):
+def vis_label_in_img(camera_8_points_list, img_path, path_camera_intrinsic, color=(0, 255, 0)):
     # dirs_camera_intrisinc = os.listdir(path_camera_intrinsic)
     # # path_list_camera_intrisinc = get_files_path(path_camera_intrinsic, '.json')
     # # path_list_camera_intrinsic.sort()
@@ -232,11 +232,10 @@ def vis_label_in_img(camera_8_points_list, img_path, path_camera_intrinsic):
     uv_origin = points_cam2img(cam8points, calib_intrinsic)
     uv_origin = (uv_origin - 1).round()
 
-    plot_rect3d_on_img(img, num_bbox, uv_origin)
-    cv2.imshow('3dboxes_image', img)
-    cv2.waitKey(0)
+    plot_rect3d_on_img(img, num_bbox, uv_origin, color=color)
+    
     # cv2.imwrite(os.path.join(save_path, index + ".png"), img)
-    print(index)
+    # print(index)
 
-    return True
-            
+    return img
+    

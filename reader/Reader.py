@@ -30,8 +30,6 @@ def get_lidar_3d_8points(obj_size, yaw_lidar, center_lidar):
 
 
 
-
-
 class Reader():
     def __init__(self, yaml_filename):
         self.para_yaml = self.read_yaml(yaml_filename)
@@ -47,52 +45,6 @@ class Reader():
     def read_yaml(self, path):
         with open(path, 'r') as f:
             return yaml.load(f, Loader=yaml.FullLoader)
-
-
-    def parse_infra_intrinsic_path(self):
-        return osp.join(self.folder_root, 'infrastructure-side', 'calib', 'camera_intrinsic', self.infra_file_name + '.json')
-
-    def parse_infra_virtuallidar2camera_path(self):
-        return osp.join(self.folder_root, 'infrastructure-side', 'calib', 'virtuallidar_to_camera', self.infra_file_name + '.json')
-    
-    def parse_infra_virtuallidar2world_path(self):
-        return osp.join(self.folder_root, 'infrastructure-side', 'calib', 'virtuallidar_to_world', self.infra_file_name + '.json')
-
-    def parse_vehicle_intrinsic_path(self):
-        return osp.join(self.folder_root, 'vehicle-side', 'calib', 'camera_intrinsic', self.vehicle_file_name + '.json')
-    
-    def parse_vehicle_novatel2world_path(self):
-        return osp.join(self.folder_root, 'vehicle-side', 'calib', 'novatel_to_world', self.vehicle_file_name + '.json')
-    
-    def parse_vehicle_lidar2camera_path(self):
-        return osp.join(self.folder_root, 'vehicle-side', 'calib', 'lidar_to_camera', self.vehicle_file_name + '.json')
-    
-    def parse_vehicle_lidar2novatel_path(self):
-        return osp.join(self.folder_root, 'vehicle-side', 'calib', 'lidar_to_novatel', self.vehicle_file_name + '.json')
-    
-
-    def parse_infra_image_path(self):
-        folder_infra_image = self.para_yaml['boxes']['folder_infra_images']
-        return osp.join(folder_infra_image, self.infra_file_name + '.jpg')
-    
-    def parse_vehicle_image_path(self):
-        folder_vehicle_image = self.para_yaml['boxes']['folder_vehicle_images']
-        return osp.join(folder_vehicle_image, self.vehicle_file_name + '.jpg')
-
-    def parse_infra_pointcloud_path(self):
-        folder_infra_pointcloud = self.para_yaml['boxes']['folder_infra_pointcloud']
-        return osp.join(folder_infra_pointcloud, self.infra_file_name + '.pcd')
-    
-    def parse_vehicle_pointcloud_path(self):
-        folder_vehicle_pointcloud = self.para_yaml['boxes']['folder_vehicle_pointcloud']
-        return osp.join(folder_vehicle_pointcloud, self.vehicle_file_name + '.pcd')
-
-    def parse_infra_label_path(self):
-        return osp.join(self.folder_root, 'infrastructure-side', 'label', 'virtuallidar', self.infra_file_name + '.json')
-
-    def parse_vehicle_label_path(self):
-        return osp.join(self.folder_root, 'vehicle-side', 'label', 'lidar', self.vehicle_file_name + '.json')
-
 
     def parse_pso_max_iter_yaml(self):
         return int(self.para_yaml['pso']['max_iter'])
@@ -114,6 +66,7 @@ class Reader():
                 boxes_dict[box_type] = []
 
             box = [label['2d_box']['xmin'], label['2d_box']['ymin'], label['2d_box']['xmax'], label['2d_box']['ymax']]
+            # box = [int(label['2d_box']['xmin']), int(label['2d_box']['ymin']), int(label['2d_box']['xmax']), int(label['2d_box']['ymax'])]
 
             boxes_dict[box_type].append(box)
 
@@ -170,37 +123,6 @@ class Reader():
         pointpillar = o3d.io.read_point_cloud(path_pointcloud)
         points = np.asarray(pointpillar.points)
         return points
-    
-    def get_infra_image(self):
-        return cv2.imread(self.parse_infra_image_path())
-
-    def get_vehicle_image(self):
-        return cv2.imread(self.parse_vehicle_image_path())
-
-    def get_infra_pointcloud(self):
-        return self.get_pointcloud(self.parse_infra_pointcloud_path())
-    
-    def get_vehicle_pointcloud(self):
-        return self.get_pointcloud(self.parse_vehicle_pointcloud_path())
-    
-
-    def get_infra_boxes_dict(self):
-        return self.get_3dboxes_dict_n_8_3(self.parse_infra_label_path())
-    
-    def get_vehicle_boxes_dict(self):
-        return self.get_3dboxes_dict_n_8_3(self.parse_vehicle_label_path())
-    
-    def get_infra_boxes_2d_dict(self):
-        return self.get_2dbbox_dict_n_4(self.parse_infra_label_path())
-
-    def get_vehicle_boxes_2d_dict(self):
-        return self.get_2dbbox_dict_n_4(self.parse_vehicle_label_path())
-    
-    def get_infra_boxes_list_n_7(self):
-        return self.get_3dboxes_list_n_7(self.parse_infra_label_path())
-
-    def get_vehicle_boxes_list_n_7(self):
-        return self.get_3dboxes_list_n_7(self.parse_vehicle_label_path())
 
     def get_intrinsic(self, path_intrinsic):
         my_json = self.read_json(path_intrinsic)
@@ -208,11 +130,3 @@ class Reader():
         calib = np.zeros([3, 4])
         calib[:3, :3] = np.array(cam_K).reshape([3, 3], order="C")
         return calib
-
-    def get_infra_intrinsic(self):
-        return self.get_intrinsic(self.parse_infra_intrinsic_path())
-        
-    def get_vehicle_intrinsic(self):
-        return self.get_intrinsic(self.parse_vehicle_intrinsic_path())
-    
-    
