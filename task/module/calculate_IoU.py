@@ -3,7 +3,6 @@
 
 import numpy as np
 from scipy.spatial import ConvexHull
-from numpy import *
 
 def polygon_clip(subjectPolygon, clipPolygon):
    """ Clip a polygon with another polygon.

@@ -6,8 +6,6 @@
 import math
 import numpy as np
 from utils import convert_T_to_6DOF, convert_6DOF_to_T
-from utils import implement_T_3dbox_dict_n_8_3, get_reverse_T
-
 
 
 class PSO():
@@ -86,15 +84,21 @@ class PSO():
 ##
 #
 
-    def __init__(self, func, infra_boxes, vehicle_boxes, init_T = np.eye(4), n_dim=6, pop=40, max_iter=150, lb=[-100, -100, -10, -math.pi, -math.pi, -math.pi], ub=[100, 100, 10, math.pi, math.pi, math.pi], v_max_scope_rate=1,
-                 w=0.8, c1=0.5, c2=0.5, constraint_eq=tuple(), constraint_ueq=tuple(), verbose=True):
+    def __init__(self, func, infra_boxes, infra_boxes_precision, vehicle_boxes_precision, vehicle_boxes, init_T = np.eye(4), n_dim=6, pop=40, max_iter=150, lb=[-100, -100, -10, -math.pi, -math.pi, -math.pi], ub=[100, 100, 10, math.pi, math.pi, math.pi], v_max_scope_rate=1,
+                 w=(0.8, 0.8), c1=0.5, c2=0.5, constraint_eq=tuple(), constraint_ueq=tuple(), verbose=True):
 
         n_dim = n_dim 
         
         self.infra_boxes = infra_boxes
         self.vehicle_boxes = vehicle_boxes
+        self.infra_boxes_precision = infra_boxes_precision
+        self.vehicle_boxes_precision = vehicle_boxes_precision
+
         self.func = func
-        self.w = w  # inertia
+ 
+        self.w_max, self.w_min = w
+        self.w = self.w_max  # inertia
+        
         self.cp, self.cg = c1, c2  # parameters to control personal best, global best respectively
         # self.w, self.cp, self.cg = 0, 0, 0
         self.pop = pop  # number of particles
@@ -110,7 +114,9 @@ class PSO():
         self.constraint_ueq = constraint_ueq
         self.constraint_eq = constraint_eq
 
-        self.X = np.array(convert_T_to_6DOF(init_T)).reshape(1, -1).repeat(self.pop, axis=0)
+        self.X = np.random.uniform(low=self.lb, high=self.ub, size=(self.pop, self.n_dim))
+        self.X[0, :] = convert_T_to_6DOF(init_T)
+        # self.X = np.array(convert_T_to_6DOF(init_T)).reshape(1, -1).repeat(self.pop, axis=0)
         v_high = [(ub_i - lb_i) / v_max_scope_rate for ub_i, lb_i in zip(self.ub, self.lb)]
         self.V = np.random.uniform(low=[-v for v in v_high], high=v_high, size=(self.pop, self.n_dim))  # speed of particles
         # self.V = np.zeros((self.pop, self.n_dim), dtype=np.float64)  # speed of particles
@@ -143,6 +149,9 @@ class PSO():
             if constraint_func(x) > 0:
                 return False
         return True
+
+    def update_w(self, iter_num):
+        self.w = self.w_max - (self.w_max - self.w_min) * iter_num / self.max_iter
 
     def update_V(self):
         r1 = np.random.rand(self.pop, self.n_dim)
@@ -211,6 +220,9 @@ class PSO():
                 for i, infra_box in enumerate(self.infra_boxes[box_type]):
                     for j, vehicle_box in enumerate(self.vehicle_boxes[box_type]):
                         # boxes shape(8 ,3)
+
+                        
+
                         IoU_matrix[i, j] = self.func(infra_box, vehicle_box) 
 
                         
@@ -276,7 +288,7 @@ class PSO():
         self.record_value['V'].append(self.V)
         self.record_value['Y'].append(self.Y)
 
-    def run(self, max_iter=None, precision=1e-7, N=20):
+    def run(self, max_iter=None, precision=1e-4, N=20):
         '''
         precision: None or float
             If precision is None, it will run the number of max_iter steps
@@ -285,7 +297,8 @@ class PSO():
         '''
         self.max_iter = max_iter or self.max_iter
         c = 0
-        for iter_num in range(1, self.max_iter):
+        for iter_num in range(self.max_iter):
+            self.update_w(iter_num)
             self.update_V()
             self.recorder()
             self.update_X()

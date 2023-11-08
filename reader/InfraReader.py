@@ -35,8 +35,8 @@ class InfraReader():
     def get_infra_pointcloud(self):
         return self.reader.get_pointcloud(self.parse_infra_pointcloud_path())    
 
-    def get_infra_boxes_dict(self):
-        return self.reader.get_3dboxes_dict_n_8_3(self.parse_infra_label_path())
+    def get_infra_boxes_dict(self, high_precision_constraint_flag=False):
+        return self.reader.get_3dboxes_dict_n_8_3(self.parse_infra_label_path(), high_precision_constraint_flag=high_precision_constraint_flag)
     
     def get_infra_boxes_2d_dict(self):
         return self.reader.get_2dbbox_dict_n_4(self.parse_infra_label_path())
@@ -44,6 +44,8 @@ class InfraReader():
     def get_infra_boxes_list_n_7(self):
         return self.reader.get_3dboxes_list_n_7(self.parse_infra_label_path())
 
+    def get_infra_occluded_truncated_state_list(self):
+        return self.reader.get_occluded_truncated_state_list(self.parse_infra_label_path())
 
     def get_infra_intrinsic(self):
         return self.reader.get_intrinsic(self.parse_infra_intrinsic_path())

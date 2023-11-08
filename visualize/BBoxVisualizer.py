@@ -94,6 +94,18 @@ class BBoxVisualizer():
                 self.draw_boxes3d(np.array(boxes), fig, color=color_)
         mlab.show()
 
+    def plot_boxes3d_lists_according_to_precision(self, boxes_lists, color_lists, precision_list):
+        fig = mlab.figure(bgcolor=(0, 0, 0), size=(640, 500))
+        for color_, boxes_list, precision in zip(color_lists, boxes_lists, precision_list):
+            for boxes, precision_level in zip(boxes_list.values(), precision):
+                denomitor = 1
+                if 2 in precision_level:
+                    denomitor = 10
+                elif 1 in precision_level:
+                    denomitor = 5
+                self.draw_boxes3d(np.array(boxes), fig, color=tuple(val / denomitor for val in color_))
+        mlab.show()
+
     def plot_boxes3d_pointcloud(self, boxes3d, pointcloud):
         fig = mlab.figure(bgcolor=(0, 0, 0), size=(640, 500))
         pointcloud_visualizer = PointCloudVisualizer()
@@ -121,4 +133,3 @@ class BBoxVisualizer():
 
 if __name__ == "__main__":
     bbox_visualizer = BBoxVisualizer()
-    

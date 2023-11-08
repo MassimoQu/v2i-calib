@@ -27,7 +27,7 @@ def convert_6DOF_to_T(x):
     R = r.as_matrix()
     T = np.eye(4)
     T[:3, :3] = np.array(R)
-    T[:3, [3]] = np.array(t)
+    T[:3, 3] = np.array(t)
     return T
 
 def convert_T_to_Rt(T):
@@ -54,9 +54,11 @@ def get_reverse_R_t(R, t):
     return rev_R, rev_t
 
 def implement_R_t_points_n_3(R, t, points):
+    R = np.array(R)
+    t = np.array(t)
     points = points.reshape(-1, 3).T
-    converted_points = np.dot(R, points).reshape(3, -1) + t.reshape(3, 1)
-    points = points.T.reshape(-1, 3)
+    converted_points = np.dot(R, points) + t.reshape(3, 1)
+    converted_points = converted_points.T.reshape(-1, 3)
     return converted_points
 
 def implement_T_points_n_3(T, points):
@@ -64,7 +66,7 @@ def implement_T_points_n_3(T, points):
     return implement_R_t_points_n_3(R, t, points)    
 
 def implement_R_t_3dbox_n_8_3(R, t, boxes):
-    return implement_R_t_points_n_3(R, t, boxes.T).reshape(-1, 8, 3)
+    return implement_R_t_points_n_3(R, t, boxes).reshape(-1, 8, 3)
 
 def implement_R_t_3dbox_dict_n_8_3(R, t, boxes_dict):
     for box_type, boxes in boxes_dict.items():

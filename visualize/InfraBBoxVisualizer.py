@@ -17,7 +17,7 @@ class InfraBBoxVisualizer():
 
 
     def plot_boxes3d_infra(self):
-        self.bbox_visualizer.plot_boxes3d_lists([self.infra_boxes_3d_dict], [(0, 255, 0)])
+        self.bbox_visualizer.plot_boxes3d_lists([self.infra_boxes_3d_dict], [(0, 1, 0)])
 
     def plot_boxes3d_pointcloud_infra(self):
         self.bbox_visualizer.plot_boxes3d_pointcloud(self.infra_boxes_3d_dict, self.reader.get_infra_pointcloud())
@@ -46,7 +46,8 @@ class InfraBBoxVisualizer():
 if __name__ == "__main__":
     bbox_visualizer = InfraBBoxVisualizer()
     bbox_visualizer.plot_boxes3d_infra()#1
-    bbox_visualizer.plot_boxes3d_pointcloud_infra()#2
-    bbox_visualizer.plot_3dboxes_infra_image()#3
-    bbox_visualizer.plot_2dboxes_infra_image()#4
-    bbox_visualizer.plot_boxes_2d3d_infra_image()#5
+    # bbox_visualizer.plot_boxes3d_pointcloud_infra()#2
+    # bbox_visualizer.plot_3dboxes_infra_image()#3
+    # bbox_visualizer.plot_2dboxes_infra_image()#4
+    # bbox_visualizer.plot_boxes_2d3d_infra_image()#5
+    

@@ -17,7 +17,7 @@ class VehicleBBoxVisualizer():
 
 
     def plot_boxes3d_vehicle(self):
-        self.bbox_visualizer.plot_boxes3d_lists([self.vehicle_boxes_3d_dict],[(0, 255, 0)])
+        self.bbox_visualizer.plot_boxes3d_lists([self.vehicle_boxes_3d_dict],[(1, 0, 0)])
 
     def plot_boxes3d_pointcloud_vehicle(self):
         self.bbox_visualizer.plot_boxes3d_pointcloud(self.vehicle_boxes_3d_dict, self.reader.get_vehicle_pointcloud())
@@ -45,7 +45,7 @@ class VehicleBBoxVisualizer():
 if __name__ == "__main__":
     bbox_visualizer = VehicleBBoxVisualizer()
     bbox_visualizer.plot_boxes3d_vehicle()#1
-    bbox_visualizer.plot_boxes3d_pointcloud_vehicle()#2
-    bbox_visualizer.plot_3dboxes_vehicle_image()#3
-    bbox_visualizer.plot_2dboxes_vehicle_image()#4
-    bbox_visualizer.plot_boxes_2d3d_vehicle_image()#5
+    # bbox_visualizer.plot_boxes3d_pointcloud_vehicle()#2
+    # bbox_visualizer.plot_3dboxes_vehicle_image()#3
+    # bbox_visualizer.plot_2dboxes_vehicle_image()#4
+    # bbox_visualizer.plot_boxes_2d3d_vehicle_image()#5
