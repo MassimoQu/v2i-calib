@@ -1,29 +1,29 @@
 import numpy as np
 from Task import Task
 import sys
-sys.path.append(r'E:\WorkSpace\vehicle-infrastructure-cooperation\vehicle_infrastructure_cooperation_normalized_code\reader')
-sys.path.append(r'E:\WorkSpace\vehicle-infrastructure-cooperation\vehicle_infrastructure_cooperation_normalized_code\visualize')
+sys.path.append('./reader')
+sys.path.append('./visualize')
 from InfraReader import InfraReader
 from VehicleReader import VehicleReader
 from CooperativeReader import CooperativeReader
 from Reader import Reader
-from module.utils import implement_R_t_3dbox_dict_n_8_3
+from module.convert_utils import implement_R_t_3dbox_dict_n_8_3
 from module.calculate_IoU import box3d_iou
 
-from BBoxVisualizer import BBoxVisualizer
+# from BBoxVisualizer import BBoxVisualizer
 
 
 class IoU3dCorrespondingTask(Task):
-    def __init__(self, high_precision_constraint_flag=False):
+    def __init__(self):
         self.reader = Reader('config.yml')
         self.infra_reader = InfraReader('config.yml')
         self.vehicle_reader = VehicleReader('config.yml')
-        self.cooperative_reader = CooperativeReader('config.yml')\
+        self.cooperative_reader = CooperativeReader('config.yml')
         
-        self.infra_boxes_dict = self.infra_reader.get_infra_boxes_dict(high_precision_constraint_flag=high_precision_constraint_flag)
-        self.vehicle_boxes_dict = self.vehicle_reader.get_vehicle_boxes_dict(high_precision_constraint_flag=high_precision_constraint_flag)
+        self.infra_boxes_dict = self.infra_reader.get_infra_boxes_dict()
+        self.vehicle_boxes_dict = self.vehicle_reader.get_vehicle_boxes_dict()
 
-        self.bbox_visualizer = BBoxVisualizer()
+        # self.bbox_visualizer = BBoxVisualizer()
         
     def cal_single_3dIoU(self, box1, box2):
         iou, _ = box3d_iou(np.array(box1), np.array(box2))
@@ -85,9 +85,9 @@ class IoU3dCorrespondingTask(Task):
         infra_precision = self.infra_reader.get_infra_occluded_truncated_state_list()
         vehicle_precision = self.vehicle_reader.get_vehicle_occluded_truncated_state_list()
 
-        if visualize_flag:
-            self.bbox_visualizer.plot_boxes3d_lists_according_to_precision([infra_boxes_dict, self.vehicle_boxes_dict], 
-                                                    color_lists=[(1.0, 0.0, 0.0), (0.0, 1.0, 0.0)], precision_list=[infra_precision, vehicle_precision])
+        # if visualize_flag:
+        #     self.bbox_visualizer.plot_boxes3d_lists_according_to_precision([infra_boxes_dict, self.vehicle_boxes_dict], 
+        #                                             color_lists=[(1.0, 0.0, 0.0), (0.0, 1.0, 0.0)], precision_list=[infra_precision, vehicle_precision])
 
         return self.cal_Y_score(infra_boxes_dict, self.vehicle_boxes_dict, infra_precision, vehicle_precision)
 
@@ -96,5 +96,5 @@ class IoU3dCorrespondingTask(Task):
     
 
 if __name__ == "__main__":
-    task = IoU3dCorrespondingTask(high_precision_constraint_flag=False)
+    task = IoU3dCorrespondingTask()
     print(task.execute())

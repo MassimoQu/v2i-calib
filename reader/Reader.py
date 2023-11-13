@@ -5,30 +5,6 @@ import yaml
 import open3d as o3d
 from BBox3d import BBox3d
 
-
-
-def get_lidar_3d_8points(obj_size, yaw_lidar, center_lidar):
-    center_lidar = [center_lidar[0], center_lidar[1], center_lidar[2]]
-
-    lidar_r = np.matrix(
-        [[math.cos(yaw_lidar), -math.sin(yaw_lidar), 0], [math.sin(yaw_lidar), math.cos(yaw_lidar), 0], [0, 0, 1]]
-    )
-    l, w, h = obj_size
-    center_lidar[2] = center_lidar[2] - h / 2
-    corners_3d_lidar = np.matrix(
-        [
-            [l / 2, l / 2, -l / 2, -l / 2, l / 2, l / 2, -l / 2, -l / 2],
-            [w / 2, -w / 2, -w / 2, w / 2, w / 2, -w / 2, -w / 2, w / 2],
-            [0, 0, 0, 0, h, h, h, h],
-        ]
-    )
-
-    corners_3d_lidar = lidar_r * corners_3d_lidar + np.matrix(center_lidar).T
-
-    return corners_3d_lidar.T
-
-
-
 class Reader():
     def __init__(self, yaml_filename):
         self.para_yaml = self.read_yaml(yaml_filename)
@@ -112,17 +88,12 @@ class Reader():
 
         return corners_3d_lidar.T
 
-
-
-    def get_3dboxes_dict_n_8_3(self, path_label, high_precision_constraint_flag):
+    def get_3dboxes_dict_n_8_3(self, path_label):
 
         labels = self.read_json(path_label) 
         
         boxes_dict = {}
         for label in labels:
-            
-            if high_precision_constraint_flag and not self.is_high_precision(label):
-                continue
 
             box_type = label["type"]
 
@@ -149,11 +120,11 @@ class Reader():
 
         return boxes_list
     
-    def get_bbox3d_list(self, path_label):
+    def get_3dbbox_object_list(self, path_label):
         labels = self.read_json(path_label) 
         bbox3d_list = []
         for label in labels:
-            bbox3d_list.append(BBox3d(label["label"], self.get_3dboxes_8_3(label)))
+            bbox3d_list.append(BBox3d(label["type"], self.get_3dboxes_8_3(label), int(label["occluded_state"]), int(label["truncated_state"]) ))
         return bbox3d_list
 
     def get_occluded_truncated_state_list(self, path_label):

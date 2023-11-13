@@ -4,13 +4,13 @@ import matplotlib.pyplot as plt
 
 from Task import Task
 import sys
-sys.path.append(r'E:\WorkSpace\vehicle-infrastructure-cooperation\vehicle_infrastructure_cooperation_normalized_code\reader')
+sys.path.append('./reader')
 from InfraReader import InfraReader
 from VehicleReader import VehicleReader
 from Reader import Reader
 from module.PSO import PSO
 from module.calculate_IoU import box3d_iou
-from module.utils import get_time
+from module.convert_utils import get_time
 
 
 class PSOTask(Task):

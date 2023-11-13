@@ -1,13 +1,13 @@
 import numpy as np
 import sys
-sys.path.append(r'E:\WorkSpace\vehicle-infrastructure-cooperation\vehicle_infrastructure_cooperation_normalized_code\reader')
-sys.path.append(r'E:\WorkSpace\vehicle-infrastructure-cooperation\vehicle_infrastructure_cooperation_normalized_code\visualize')
+sys.path.append('./reader')
+sys.path.append('./visualize')
 from VehicleReader import VehicleReader
 from InfraReader import InfraReader
 from CooperativeReader import CooperativeReader
 from PointCloudVisualizer import PointCloudVisualizer
 
-from utils import get_reverse_R_t, multiply_extrinsics, implement_T_3dbox_dict_n_8_3, implement_T_points_n_3, get_reverse_T, convert_Rt_to_T
+from module.convert_utils import implement_T_3dbox_dict_n_8_3, implement_T_points_n_3, convert_Rt_to_T
 
 class CoordinateConversion():
     def __init__(self):

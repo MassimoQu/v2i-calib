@@ -3,8 +3,8 @@ import numpy as np
 import cv2
 
 import sys
-sys.path.append(r'E:\WorkSpace\vehicle-infrastructure-cooperation\vehicle_infrastructure_cooperation_normalized_code\task')
-sys.path.append(r'E:\WorkSpace\vehicle-infrastructure-cooperation\vehicle_infrastructure_cooperation_normalized_code\reader')
+sys.path.append('./task')
+sys.path.append('./reader')
 # print(sys.path)
 from Reader import Reader
 from PointCloudVisualizer import PointCloudVisualizer

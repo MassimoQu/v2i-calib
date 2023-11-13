@@ -38,9 +38,12 @@ class VehicleReader():
     def get_vehicle_pointcloud(self):
         return self.reader.get_pointcloud(self.parse_vehicle_pointcloud_path())
 
-    def get_vehicle_boxes_dict(self, high_precision_constraint_flag=False):
-        return self.reader.get_3dboxes_dict_n_8_3(self.parse_vehicle_label_path(), high_precision_constraint_flag=high_precision_constraint_flag)
+    def get_vehicle_boxes_dict(self):
+        return self.reader.get_3dboxes_dict_n_8_3(self.parse_vehicle_label_path())
     
+    def get_vehicle_boxes_object_list(self):
+        return self.reader.get_3dbbox_object_list(self.parse_vehicle_label_path())
+
     def get_vehicle_boxes_2d_dict(self):
         return self.reader.get_2dbbox_dict_n_4(self.parse_vehicle_label_path())
     

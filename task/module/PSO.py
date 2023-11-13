@@ -5,7 +5,7 @@
 
 import math
 import numpy as np
-from utils import convert_T_to_6DOF, convert_6DOF_to_T
+from module.convert_utils import convert_T_to_6DOF, convert_6DOF_to_T
 
 
 class PSO():
@@ -84,15 +84,13 @@ class PSO():
 ##
 #
 
-    def __init__(self, func, infra_boxes, infra_boxes_precision, vehicle_boxes_precision, vehicle_boxes, init_T = np.eye(4), n_dim=6, pop=40, max_iter=150, lb=[-100, -100, -10, -math.pi, -math.pi, -math.pi], ub=[100, 100, 10, math.pi, math.pi, math.pi], v_max_scope_rate=1,
+    def __init__(self, func, infra_boxes, vehicle_boxes, init_T = np.eye(4), n_dim=6, pop=40, max_iter=150, lb=[-100, -100, -10, -math.pi, -math.pi, -math.pi], ub=[100, 100, 10, math.pi, math.pi, math.pi], v_max_scope_rate=1,
                  w=(0.8, 0.8), c1=0.5, c2=0.5, constraint_eq=tuple(), constraint_ueq=tuple(), verbose=True):
 
         n_dim = n_dim 
         
         self.infra_boxes = infra_boxes
         self.vehicle_boxes = vehicle_boxes
-        self.infra_boxes_precision = infra_boxes_precision
-        self.vehicle_boxes_precision = vehicle_boxes_precision
 
         self.func = func
  
