@@ -1,6 +1,5 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import mistree as mist
 import sys
 sys.path.append('./reader')
 sys.path.append('./task/module')
@@ -60,7 +59,31 @@ def cal_similarity_size(infra_bbox_8_3, vehicle_bbox_8_3):
 
 
 def cal_similarity_angle(infra_bbox_2_8_3, vehicle_bbox_2_8_3):
-    pass
+    # 计算两个边的中心点
+    infra_centroid1 = np.mean(infra_bbox_2_8_3[0], axis=0)
+    infra_centroid2 = np.mean(infra_bbox_2_8_3[1], axis=0)
+    vehicle_centroid1 = np.mean(vehicle_bbox_2_8_3[0], axis=0)
+    vehicle_centroid2 = np.mean(vehicle_bbox_2_8_3[1], axis=0)
+
+    # 计算两个边的方向向量
+    infra_vector = infra_centroid2 - infra_centroid1
+    vehicle_vector = vehicle_centroid2 - vehicle_centroid1
+
+    # 计算向量之间的夹角
+    # angle = np.arccos(np.clip(np.dot(infra_vector, vehicle_vector.T) / 
+    #                           (np.linalg.norm(infra_vector) * np.linalg.norm(vehicle_vector)), -1.0, 1.0))
+    
+    # # 将夹角转换为度数
+    # angle_degree = np.degrees(angle)
+
+    # # 余弦相似度相似度 
+    # similarity_angle = np.cos(angle) 
+
+    similarity_angle = np.clip(np.dot(infra_vector, vehicle_vector.T) / 
+                              (np.linalg.norm(infra_vector) * np.linalg.norm(vehicle_vector)), -1.0, 1.0)
+
+    return similarity_angle
+
 
 def cal_similarity_length(infra_bbox_2_8_3, vehicle_bbox_2_8_3):
     '''
@@ -79,6 +102,7 @@ def cal_similarity_length(infra_bbox_2_8_3, vehicle_bbox_2_8_3):
     similarity_length = 1 - np.abs(infra_length - vehicle_length) / np.max([infra_length, vehicle_length])
 
     return similarity_length
+
 
 def test_similarity_size(infra_object_list, vehicle_object_list):
     KP = np.zeros((len(infra_object_list), len(vehicle_object_list)), dtype=np.float64)
@@ -120,6 +144,13 @@ def test_similarity_size(infra_object_list, vehicle_object_list):
     ax.boxplot(data, patch_artist=True)
     plt.show()
 
+def test_similarity_length(infra_object_list, vehicle_object_list):
+    pass
+
+def test_similarity_angle(infra_object_list, vehicle_object_list):
+    pass
+
+
 if __name__ == "__main__":
     cooperative_reader = CooperativeReader('config.yml')
     infra_bboxes_object_list, vehicle_bboxes_object_list = cooperative_reader.get_cooperative_infra_vehicle_bboxes_object_list()
@@ -127,51 +158,5 @@ if __name__ == "__main__":
     infra_centerxyz = extract_centerxyz_from_object_list(infra_bboxes_object_list)
     vehicle_centerxyz = extract_centerxyz_from_object_list(vehicle_bboxes_object_list) 
 
-    infra_mst = mist.GetMST(x=infra_centerxyz[: , 0], y=infra_centerxyz[: , 1], z=infra_centerxyz[: , 2])
-    vehicle_mst = mist.GetMST(x=vehicle_centerxyz[: , 0], y=vehicle_centerxyz[: , 1], z=vehicle_centerxyz[: , 2])
 
-    # d, l, b, s, l_index, b_index = infra_mst.get_stats(infra_mst)
-
-    print(infra_mst.get_stats(include_index=True, k_neighbours=5))
-
-    # print(np.linalg.norm(infra_centerxyz[0] - infra_centerxyz[1]))
-    # print(np.linalg.norm(infra_centerxyz[1] - infra_centerxyz[2]))
-    # print(np.linalg.norm(infra_centerxyz[2] - infra_centerxyz[3]))
-    # print(np.linalg.norm(infra_centerxyz[3] - infra_centerxyz[4]))
-
-
-    # infra_node_cnt = 0
-    # for i1, infra_bbox_object1 in enumerate(infra_bboxes_object_list):
-    #     for i2, infra_bbox_object2 in enumerate(infra_bboxes_object_list):
-    #         if i1 == i2:
-    #             continue
-    #         vehicle_node_cnt = 0
-    #         for j1, vehicle_bbox_object1 in enumerate(vehicle_bboxes_object_list):
-    #             for j2, vehicle_bbox_object2 in enumerate(vehicle_bboxes_object_list):
-    #                 if j1 == j2:
-    #                     continue
-    #                 if infra_bbox_object1.get_bbox_type() != vehicle_bbox_object1.get_bbox_type() or infra_bbox_object2.get_bbox_type() != vehicle_bbox_object2.get_bbox_type():
-    #                     KQ[infra_node_cnt, vehicle_node_cnt] = 0
-    #                     continue
-
-    #                 infra_edge = (infra_bbox_object1.get_bbox3d_8_3(), infra_bbox_object2.get_bbox3d_8_3())
-    #                 vehicle_edge = (vehicle_bbox_object1.get_bbox3d_8_3(), vehicle_bbox_object2.get_bbox3d_8_3())
-
-    #                 # 检测框大小
-    #                 similarity_infra_size = cal_similarity_size(infra_edge[0], vehicle_edge[0])
-    #                 similarity_vehicle_size = cal_similarity_size(infra_edge[1], vehicle_edge[1])
-    #                 similarity_size = similarity_infra_size * similarity_vehicle_size
-                    
-    #                 # 边长
-    #                 similarity_length = cal_similarity_length(infra_edge, vehicle_edge)
-
-    #                 # 角度
-    #                 # similarity_angle = similarity_utils.cal_similarity_angle(infra_edge, vehicle_edge)
-                    
-    #                 # KQ[infra_node_cnt, vehicle_node_cnt] = similarity_size * similarity_length * similarity_angle
-    #                 KQ[infra_node_cnt, vehicle_node_cnt] = 
-    #                 vehicle_node_cnt += 1
-            
-    #         infra_node_cnt += 1
-    
 

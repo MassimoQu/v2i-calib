@@ -2,6 +2,7 @@
     "python.analysis.extraPaths": [
         "./task",
         "./reader",
-        "./visualize"
+        "./visualize",
+        "./task/module"
     ]
 }

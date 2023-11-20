@@ -35,7 +35,7 @@ class Reader():
         boxes_dict = {}
         for label in labels:
         
-            box_type = label["type"]
+            box_type = label["type"].lower()
 
             if box_type not in boxes_dict.keys():
                 boxes_dict[box_type] = []
@@ -95,7 +95,7 @@ class Reader():
         boxes_dict = {}
         for label in labels:
 
-            box_type = label["type"]
+            box_type = label["type"].lower()
 
             if box_type not in boxes_dict.keys():
                 boxes_dict[box_type] = []
@@ -124,7 +124,7 @@ class Reader():
         labels = self.read_json(path_label) 
         bbox3d_list = []
         for label in labels:
-            bbox3d_list.append(BBox3d(label["type"], self.get_3dboxes_8_3(label), int(label["occluded_state"]), int(label["truncated_state"]) ))
+            bbox3d_list.append(BBox3d(label["type"].lower(), self.get_3dboxes_8_3(label), int(label["occluded_state"]), int(label["truncated_state"]) ))
         return bbox3d_list
 
     def get_occluded_truncated_state_list(self, path_label):

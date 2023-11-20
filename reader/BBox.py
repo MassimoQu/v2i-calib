@@ -15,4 +15,6 @@ class BBox:
     def get_truncated_state(self):
         return self.truncated_state
     
+    def copy(self):
+        return BBox(self.bbox_type, self.occluded_state, self.truncated_state)
     

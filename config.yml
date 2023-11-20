@@ -8,10 +8,10 @@ pso:
 boxes:
   folder_root: /home/massimo/vehicle_infrastructure_calibration/data/cooperative-vehicle-infrastructure
   
-  folder_infra_pointcloud: C:\Users\10612\Downloads\cooperative-vehicle-infrastructure-infrastructure-side-velodyne\cooperative-vehicle-infrastructure-infrastructure-side-velodyne
+  folder_infra_pointcloud: /home/massimo/vehicle_infrastructure_calibration/data/cooperative-vehicle-infrastructure-infrastructure-side-velodyne
   folder_infra_images: C:\Users\10612\Downloads\cooperative-vehicle-infrastructure-infrastructure-side-image_12649294009733120\cooperative-vehicle-infrastructure-infrastructure-side-image
   file_name_infra: 003920
 
-  folder_vehicle_pointcloud: C:\Users\10612\Downloads\cooperative-vehicle-infrastructure-vehicle-side-velodyne\cooperative-vehicle-infrastructure-vehicle-side-velodyne
+  folder_vehicle_pointcloud: /home/massimo/vehicle_infrastructure_calibration/data/cooperative-vehicle-infrastructure-vehicle-side-velodyne
   folder_vehicle_images: C:\Users\10612\Downloads\cooperative-vehicle-infrastructure-vehicle-side-image_12649294009733120\cooperative-vehicle-infrastructure-vehicle-side-image
   file_name_vehicle: 020092

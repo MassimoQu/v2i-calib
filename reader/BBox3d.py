@@ -1,3 +1,4 @@
+import copy
 from BBox import BBox
 
 class BBox3d(BBox):
@@ -8,3 +9,5 @@ class BBox3d(BBox):
     def get_bbox3d_8_3(self):
         return self.bbox3d_8_3
     
+    def copy(self):
+        return BBox3d(self.bbox_type, copy.deepcopy(self.bbox3d_8_3), self.occluded_state, self.truncated_state)
