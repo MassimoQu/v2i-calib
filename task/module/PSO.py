@@ -5,7 +5,13 @@
 
 import math
 import numpy as np
-from module.convert_utils import convert_T_to_6DOF, convert_6DOF_to_T
+import sys
+sys.path.append('./reader')
+from CooperativeReader import CooperativeReader
+from module.convert_utils import convert_T_to_6DOF, convert_6DOF_to_T, get_time, convert_Rt_to_T
+from CoordinateConversion import CoordinateConversion
+from GenerateCorrespondingListTask import GenerateCorrespondingListTask
+
 
 
 class PSO():
@@ -313,6 +319,175 @@ class PSO():
                     c = 0
             if self.verbose:
                 print('Iter: {}, Best fit: {} at {}'.format(iter_num, self.gbest_y, self.gbest_x))
+
+            self.gbest_y_hist.append(self.gbest_y)
+        self.best_x, self.best_y = self.gbest_x, self.gbest_y
+        return self.best_x, self.best_y
+
+class PSO_new_type():
+
+#
+##
+# r1 r2 每一次都随机
+# W 固定
+# cp cg 固定
+# 构建一个渐变模型，对不同IoU水平给出不同移动步长
+##
+#
+
+    def __init__(self, func, infra_box_object_list, vehicle_box_object_list, init_T_list = [np.eye(4)], n_dim=6, pop=40, max_iter=150, lb=[-100, -100, -10, -math.pi, -math.pi, -math.pi], ub=[100, 100, 10, math.pi, math.pi, math.pi], v_max_scope_rate=1,
+                 w=(0.8, 0.8), c1=0.5, c2=0.5, constraint_eq=tuple(), constraint_ueq=tuple(), verbose=True):
+
+        n_dim = n_dim 
+        
+        self.infra_box_object_list = infra_box_object_list
+        self.vehicle_box_object_list = vehicle_box_object_list
+
+        self.coordinate_conversion = CoordinateConversion()
+        self.cooperative_reader = CooperativeReader('config.yml')
+        self.true_T_6DOF_format = convert_T_to_6DOF(convert_Rt_to_T(*self.cooperative_reader.get_cooperative_lidar_i2v()))
+        self.generate_corresponding_list_task = GenerateCorrespondingListTask('config.yml')
+
+        self.func = func
+ 
+        self.w_max, self.w_min = w
+        self.w = self.w_max  # inertia
+        
+        self.cp, self.cg = c1, c2  # parameters to control personal best, global best respectively
+        # self.w, self.cp, self.cg = 0, 0, 0
+        self.pop = pop  # number of particles
+        self.n_dim = n_dim  # dimension of particles, which is the number of variables of func
+        self.max_iter = max_iter  # max iter
+        self.verbose = verbose  # print the result of each iter or not
+
+        self.lb, self.ub = lb, ub
+        assert self.n_dim == len(self.lb) == len(self.ub), 'dim == len(lb) == len(ub) is not True'
+        assert np.all(self.ub > self.lb), 'upper-bound must be greater than lower-bound'
+
+        self.has_constraint = bool(constraint_ueq)
+        self.constraint_ueq = constraint_ueq
+        self.constraint_eq = constraint_eq
+
+        self.X = np.random.uniform(low=self.lb, high=self.ub, size=(self.pop, self.n_dim))
+        cnt = max(init_T_list.shape[0], self.pop)
+        for i, init_T in enumerate(init_T_list):
+            if cnt <= 0:
+                break
+            cnt -= 1
+            self.X[i, :] = convert_T_to_6DOF(init_T)
+
+        v_high = [(ub_i - lb_i) / v_max_scope_rate for ub_i, lb_i in zip(self.ub, self.lb)]
+        self.V = np.random.uniform(low=[-v for v in v_high], high=v_high, size=(self.pop, self.n_dim))  # speed of particles
+        self.Y = np.zeros((pop, 1), dtype=np.float64)
+        self.cal_y()  # y = f(x) for all particles
+        self.pbest_x = np.array(self.X.copy())  # personal best location of every particle in history
+        self.pbest_y = np.zeros((pop, 1), dtype=np.float64)  # best image of every particle in history
+        self.update_pbest()
+        self.gbest_x = self.pbest_x.mean(axis=0).reshape(1, -1)  # global best location for all particles
+        self.gbest_y = 0  # global best y for all particles
+        self.gbest_y_hist = []  # gbest_y of every iteration
+        self.update_gbest()
+        if self.verbose:
+            print('Iter: -, Best fit: {} at {}'.format(self.gbest_y, self.gbest_x))
+        self.gbest_y_hist.append(self.gbest_y)
+
+        # record verbose values
+        self.record_mode = False
+        self.record_value = {'X': [], 'V': [], 'Y': []}
+        
+        self.best_x, self.best_y = self.gbest_x, self.gbest_y  # history reasons, will be deprecated
+        
+
+    
+
+
+    def check_constraint(self, x):
+        # gather all unequal constraint functions
+        for constraint_func in self.constraint_ueq:
+            if constraint_func(x) > 0:
+                return False
+        return True
+
+    def update_w(self, iter_num):
+        self.w = self.w_max - (self.w_max - self.w_min) * iter_num / self.max_iter
+
+    def update_V(self):
+        r1 = np.random.rand(self.pop, self.n_dim)
+        r2 = np.random.rand(self.pop, self.n_dim)
+        self.V = self.w * self.V + \
+                 self.cp * r1 * (self.pbest_x - self.X) + \
+                 self.cg * r2 * (self.gbest_x - self.X)
+
+    def update_X(self):
+        self.X = self.X + self.V
+        self.X = np.clip(self.X, self.lb, self.ub)
+
+    def cal_y(self):
+
+        for idx, X in enumerate(self.X):
+            T = convert_6DOF_to_T(X)
+            converted_infra_box_object_list_copy = self.coordinate_conversion.convert_bboxes_object_list_infra_lidar_2_vehicle_lidar_given_T(self.infra_box_object_list, T)
+            self.Y[idx][0] = self.generate_corresponding_list_task.cal_Y_score(converted_infra_box_object_list_copy, self.vehicle_box_object_list)
+        
+
+    def update_pbest(self):
+        '''
+        personal best
+        :return:
+        '''
+        self.need_update = self.pbest_y < self.Y
+        for idx, x in enumerate(self.X):
+            if self.need_update[idx]:
+                self.need_update[idx] = self.check_constraint(x)
+
+        self.pbest_x = np.where(self.need_update, self.X, self.pbest_x)
+        self.pbest_y = np.where(self.need_update, self.Y, self.pbest_y)
+
+    def update_gbest(self):
+        '''
+        global best
+        :return:
+        '''
+        idx_max = self.pbest_y.argmax()
+        if self.gbest_y < self.pbest_y[idx_max]:
+            self.gbest_x = self.X[idx_max, :].copy()
+            self.gbest_y = self.pbest_y[idx_max]
+
+    def recorder(self):
+        if not self.record_mode:
+            return
+        self.record_value['X'].append(self.X)
+        self.record_value['V'].append(self.V)
+        self.record_value['Y'].append(self.Y)
+
+    @get_time
+    def run(self, max_iter=None, precision=1e-1, N=20):
+        '''
+        precision: None or float
+            If precision is None, it will run the number of max_iter steps
+            If precision is a float, the loop will stop if continuous N difference between pbest less than precision
+        N: int
+        '''
+        self.max_iter = max_iter or self.max_iter
+        c = 0
+        for iter_num in range(self.max_iter):
+            self.update_w(iter_num)
+            self.update_V()
+            self.recorder()
+            self.update_X()
+            self.cal_y()
+            self.update_pbest()
+            self.update_gbest()
+            if precision is not None:
+                tor_iter = np.amax(self.pbest_y) - np.amin(self.pbest_y)
+                if tor_iter < precision:
+                    c = c + 1
+                    if c > N:
+                        break
+                else:
+                    c = 0
+            if self.verbose:
+                print('Iter: {}, Best fit: {} at {} , delta_true: {} '.format(iter_num, self.gbest_y, self.gbest_x, self.true_T_6DOF_format - self.gbest_x))
 
             self.gbest_y_hist.append(self.gbest_y)
         self.best_x, self.best_y = self.gbest_x, self.gbest_y

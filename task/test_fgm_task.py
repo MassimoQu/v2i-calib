@@ -13,6 +13,7 @@ import CooperativeReader
 import module.similarity_utils as similarity_utils
 from module.CoordinateConversion import CoordinateConversion
 from module.Filter3dBoxes import Filter3dBoxes
+from module.convert_utils import get_time
 from BBoxVisualizer_open3d import BBoxVisualizer_open3d as BBoxVisualizer
 from GenerateCorrespondingListTask import GenerateCorrespondingListTask
 
@@ -28,7 +29,7 @@ class FGMTask():
         # self.infra_bboxes_object_list, self.vehicle_bboxes_object_list = self.reader.get_cooperative_infra_vehicle_bboxes_object_list()
 
         self.filter3dBoxes = Filter3dBoxes()
-        self.infra_bboxes_object_list, self.vehicle_bboxes_object_list = self.filter3dBoxes.get_filtered_infra_vehicle_according_to_size_distance_occlusion_truncation(topk=8)
+        self.infra_bboxes_object_list, self.vehicle_bboxes_object_list = self.filter3dBoxes.get_filtered_infra_vehicle_according_to_size_distance_occlusion_truncation(topk=10)
 
         # print(self.infra_bboxes_object_list, self.vehicle_bboxes_object_list)
 
@@ -303,6 +304,20 @@ class FGMTask():
             np.savetxt(f"{output_dir}/gph2_{key}.csv", matrix, delimiter=",", fmt='%d')
             # pd.DataFrame(matrix).to_csv(f"{output_dir}/gph2_{key}.csv", index=False)
 
+    def get_assignment_from_KP(self, topK = 5):
+        filename = './output/KP.csv'
+        KP = pd.read_csv(filename, header=None)
+        indices_and_values = [(index, value) for index, value in np.ndenumerate(KP)]
+        topK_matches = sorted(indices_and_values, key=lambda x: x[1], reverse=True)[:topK]
+        return topK_matches
+
+    @get_time
+    def test_time_get_assignment_from_KP(self, topK = 5):
+        self.cal_KP()
+        indices_and_values = [(index, value) for index, value in np.ndenumerate(self.KP)]
+        topK_matches = sorted(indices_and_values, key=lambda x: x[1], reverse=True)[:topK]
+        return topK_matches
+
 
     def get_assignment_result(self):
         filename = './output/result.csv'
@@ -355,11 +370,15 @@ class FGMTask():
 
 if __name__ == "__main__":
     task = FGMTask()
-    task.execute()
+    # task.execute()
 
-    task.output_intermediate_result()
+    # task.output_intermediate_result()
 
-    task.test_matches_visualization_view()
+    # task.test_matches_visualization_view()
 
     # matches = GenerateCorrespondingListTask('config.yml').load_infra_vehicle_corresponding_list()
     # task.test_given_matches_visualization_view(matches)
+
+    # task.get_assignment_from_KP()
+
+    task.test_time_get_assignment_from_KP()
