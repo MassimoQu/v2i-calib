@@ -13,7 +13,7 @@ from CoordinateConversion import CoordinateConversion
 
 # 用程序生成部分匹配真值 
 class GenerateCorrespondingListTask():
-    def __init__(self, yaml_filename):
+    def __init__(self, yaml_filename='config.yml'):
         self.cooperative_reader = CooperativeReader(yaml_filename)
         self.infra_bboxes_object_list, self.vehicle_bboxes_object_list = self.cooperative_reader.get_cooperative_infra_vehicle_bboxes_object_list()
 
@@ -56,6 +56,8 @@ class GenerateCorrespondingListTask():
             Y = np.mean(infra_vehicle_boxes3d_IoU_list)
 
         return Y
+
+    
 
 
     def get_infra_converted_corresponding_list(self):

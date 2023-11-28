@@ -57,7 +57,6 @@ def cal_similarity_size(infra_bbox_8_3, vehicle_bbox_8_3):
     return similarity_size
 
 
-
 def cal_similarity_angle(infra_bbox_2_8_3, vehicle_bbox_2_8_3):
     # 计算两个边的中心点
     infra_centroid1 = np.mean(infra_bbox_2_8_3[0], axis=0)
@@ -103,6 +102,52 @@ def cal_similarity_length(infra_bbox_2_8_3, vehicle_bbox_2_8_3):
 
     return similarity_length
 
+def cal_angle(bbox1_8_3, bbox2_8_3):
+    centroid1 = np.mean(bbox1_8_3, axis=0)
+    centroid2 = np.mean(bbox2_8_3, axis=0)
+    vector = centroid2 - centroid1
+    angle = np.arctan2(vector[0, 1], vector[0, 0])
+    return angle
+
+
+
+def get_KNN_edges(box_object_list, index, k):
+    selected_box_object = box_object_list[index]
+    distances = [np.linalg.norm(selected_box_object.get_bbox3d_8_3() - box_object.get_bbox3d_8_3()) for box_object in box_object_list if box_object != selected_box_object]
+    sorted_index = np.argsort(distances)
+    pairs =  [box_object for box_object in np.array(box_object_list)[sorted_index][:k]]
+    return pairs
+
+
+def count_similarity(edge1_point, edge1_start_point, edge2_point, edge2_start_point, length_tolerance, angle_tolerance, size_tolerance):
+    if edge1_point.get_bbox_type() != edge2_point.get_bbox_type():
+        return 0
+
+    # length_similar
+    length_similar = cal_similarity_length((edge1_start_point.get_bbox3d_8_3(), edge1_point.get_bbox3d_8_3()), (edge2_start_point.get_bbox3d_8_3(), edge2_point.get_bbox3d_8_3())) > length_tolerance
+
+    # # size_similar
+    # size_similar = cal_similarity_size(edge1_point.get_bbox3d_8_3(), edge2_point.get_bbox3d_8_3()) > size_tolerance
+
+    return length_similar #+ size_similar
+
+
+def cal_similarity_knn(infra_object_list, infra_index, vehicle_object_list, vehicle_index, k = 0, length_threshold=0.4, angle_threshold=0.1, size_threshold=0.1):
+    k_infra, k_vehicle = k, k
+
+    if k > len(infra_object_list) - 1:
+        k_infra = len(infra_object_list) - 1
+    if k > len(vehicle_object_list) - 1:
+        k_vehicle = len(vehicle_object_list) - 1
+        
+    if k == 0:
+        k_infra, k_vehicle = len(infra_object_list) - 1, len(vehicle_object_list) - 1
+        
+    infra_index_edges = get_KNN_edges(infra_object_list, infra_index, k_infra)
+    vehicle_index_edges = get_KNN_edges(vehicle_object_list, vehicle_index, k_vehicle)
+    similarity = sum(count_similarity(infra_edge, infra_object_list[infra_index], vehicle_edge, vehicle_object_list[vehicle_index], length_threshold, angle_threshold, size_threshold) for infra_edge in infra_index_edges for vehicle_edge in vehicle_index_edges)
+    return similarity
+    
 
 def test_similarity_size(infra_object_list, vehicle_object_list):
     KP = np.zeros((len(infra_object_list), len(vehicle_object_list)), dtype=np.float64)
