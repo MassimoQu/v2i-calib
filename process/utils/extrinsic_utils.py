@@ -95,4 +95,40 @@ def multiply_extrinsics(T1, T2):
 
     return convert_Rt_to_T(np.array(R), np.array(t))
 
-#todo: 常见的外惨转换关系，可以和上面的整合一下打包成一个类
+def get_extrinsic_from_two_points(points1, points2):
+    # assert points1.shape == points2.shape
+    # assert points1.shape[0] == 3
+    # assert points1.shape[1] >= 3
+
+    centroid1 = np.mean(points1, axis=1)
+    centroid2 = np.mean(points2, axis=1)
+
+    points1 = points1 - centroid1.reshape(3, 1)
+    points2 = points2 - centroid2.reshape(3, 1)
+
+    H = np.dot(points2, points1.T)
+    U, _, Vt = np.linalg.svd(H)
+    R = np.dot(Vt.T, U.T)
+    
+    if np.linalg.det(R) < 0:
+        Vt[2, :] *= -1
+        R = np.dot(Vt.T, U.T)
+
+    t = -np.dot(R, centroid2.reshape(3, 1)) + centroid1.reshape(3, 1)
+
+    T = np.eye(4)
+    T[:3, :3] = R
+    T[:3, 3] = t.flatten()  
+
+    return T
+
+def get_extrinsic_from_two_3dbox_object(box_object_1, box_object_2):
+    points1 = box_object_1.get_bbox3d_8_3()
+    points2 = box_object_2.get_bbox3d_8_3()
+    return get_extrinsic_from_two_points(points1, points2)
+    
+def get_extrinsic_from_two_3dbox_object_list(box_object_list_1, box_object_list_2):
+    points1 = np.concatenate([box_object.get_bbox3d_8_3() for box_object in box_object_list_1], axis=0)
+    points2 = np.concatenate([box_object.get_bbox3d_8_3() for box_object in box_object_list_2], axis=0)
+    return get_extrinsic_from_two_points(points1, points2)
+

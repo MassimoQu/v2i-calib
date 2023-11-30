@@ -2,7 +2,7 @@ import numpy as np
 import open3d as o3d
 import sys
 sys.path.append('./reader')
-sys.path.append('./task/module')
+sys.path.append('./process')
 from CooperativeReader import CooperativeReader
 from BBoxVisualizer import BBoxVisualizer
 from Filter3dBoxes import Filter3dBoxes
@@ -81,16 +81,16 @@ class BBoxVisualizer_open3d(BBoxVisualizer):
 
 if '__main__' == __name__:
     cooperative_reader = CooperativeReader('config.yml')
-    # converted_infra_boxes_object_list, vehicle_boxes_object_list = cooperative_reader.get_cooperative_infra_vehicle_boxes3d_object_lists_vehicle_coordinate()
-    converted_infra_pointcloud, vehicle_pointcloud = cooperative_reader.get_cooperative_infra_vehicle_pointcloud_vehicle_coordinate()
+    converted_infra_boxes_object_list, vehicle_boxes_object_list = cooperative_reader.get_cooperative_infra_vehicle_boxes3d_object_lists_vehicle_coordinate()
+    # converted_infra_pointcloud, vehicle_pointcloud = cooperative_reader.get_cooperative_infra_vehicle_pointcloud_vehicle_coordinate()
 
     # filetr_3dboxes = Filter3dBoxes()
     # degree = 2
     # converted_infra_boxes_object_list = filetr_3dboxes.filter_according_to_occlusion_truncation(converted_infra_boxes_object_list, degree, degree)
     # vehicle_boxes_object_list = filetr_3dboxes.filter_according_to_occlusion_truncation(vehicle_boxes_object_list, degree, degree)
 
-    filter3dBoxes = Filter3dBoxes()
-    converted_infra_boxes_object_list, vehicle_boxes_object_list = filter3dBoxes.get_filtered_infra_vehicle_according_to_size_distance_occlusion_truncation(topk=8)
+    # filter3dBoxes = Filter3dBoxes()
+    # converted_infra_boxes_object_list, vehicle_boxes_object_list = filter3dBoxes.get_filtered_infra_vehicle_according_to_size_distance_occlusion_truncation(topk=20)
 
     boxes_color_list = [[1, 0, 0], [0, 1, 0]]
     BBoxVisualizer_open3d().plot_boxes3d_lists_pointcloud_lists([converted_infra_boxes_object_list, vehicle_boxes_object_list], [], boxes_color_list)

@@ -28,34 +28,6 @@ class Reader():
         return int(self.para_yaml['pso']['population'])
 
 
-    def get_2dbbox_dict_n_4(self, path_label):
-
-        labels = self.read_json(path_label) 
-        
-        boxes_dict = {}
-        for label in labels:
-        
-            box_type = label["type"].lower()
-
-            if box_type not in boxes_dict.keys():
-                boxes_dict[box_type] = []
-
-            box = [label['2d_box']['xmin'], label['2d_box']['ymin'], label['2d_box']['xmax'], label['2d_box']['ymax']]
-            # box = [int(label['2d_box']['xmin']), int(label['2d_box']['ymin']), int(label['2d_box']['xmax']), int(label['2d_box']['ymax'])]
-
-            boxes_dict[box_type].append(box)
-
-        for box_type, box in boxes_dict.items():
-            boxes_dict[box_type] = np.array(box)
-            
-        return boxes_dict
-
-    def is_high_precision(self, label):
-        if int(label["truncated_state"]) == 2 or int(label["occluded_state"]) == 2:
-            return False
-        else :
-            return True
-
     def get_3dboxes_8_3(self, label):
         obj_size = [
             float(label["3d_dimensions"]["l"]),
@@ -86,39 +58,7 @@ class Reader():
 
         corners_3d_lidar = lidar_r * corners_3d_lidar + np.matrix(center_lidar).T
 
-        return corners_3d_lidar.T
-
-    def get_3dboxes_dict_n_8_3(self, path_label):
-
-        labels = self.read_json(path_label) 
-        
-        boxes_dict = {}
-        for label in labels:
-
-            box_type = label["type"].lower()
-
-            if box_type not in boxes_dict.keys():
-                boxes_dict[box_type] = []
-
-            box = self.get_3dboxes_8_3(label)
-
-            boxes_dict[box_type].append(box)
-
-        for box_type, box in boxes_dict.items():
-            boxes_dict[box_type] = np.array(box)
-            
-        return boxes_dict    
-
-    def get_3dboxes_list_n_7(self, path_label):
-        labels = self.read_json(path_label) 
-    
-        boxes_list = []
-        for label in labels:    
-            if "rotation" not in label.keys():
-                label["rotation"] = 0.0
-            boxes_list.append([label["3d_dimensions"], label["3d_location"], label["rotation"]])
-
-        return boxes_list
+        return corners_3d_lidar.T   
     
     def get_3dbbox_object_list(self, path_label):
         labels = self.read_json(path_label) 
@@ -126,13 +66,6 @@ class Reader():
         for label in labels:
             bbox3d_list.append(BBox3d(label["type"].lower(), self.get_3dboxes_8_3(label), int(label["occluded_state"]), int(label["truncated_state"]) ))
         return bbox3d_list
-
-    def get_occluded_truncated_state_list(self, path_label):
-        labels = self.read_json(path_label) 
-        occluded_truncated_state_list = []
-        for label in labels:
-            occluded_truncated_state_list.append([int(label["occluded_state"]), int(label["truncated_state"])])
-        return occluded_truncated_state_list
 
     def get_pointcloud(self, path_pointcloud):
         pointpillar = o3d.io.read_point_cloud(path_pointcloud)

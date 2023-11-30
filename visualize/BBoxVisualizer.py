@@ -3,10 +3,8 @@ import cv2
 
 import sys
 sys.path.append('./reader')
-# print(sys.path)
 from InfraReader import InfraReader
 from vis_utils import get_cam_8_points, vis_label_in_img
-
 
 
 class BBoxVisualizer():
@@ -27,7 +25,7 @@ class BBoxVisualizer():
         cv2.waitKey(0)
 
     
-
+    # to delete the dict type
     def plot_boxes_2d3d_image(self, _3dboxes_list_n_7, boxes_2d_dict, path_lidar2camera, path_image, path_camera_intrinsic, color_list = [(0, 255, 0), (255, 0, 0)]):
         img = vis_label_in_img(get_cam_8_points(_3dboxes_list_n_7, path_lidar2camera), path_image, path_camera_intrinsic, color=color_list[0])
 

@@ -2,7 +2,7 @@ import numpy as np
 import sys
 sys.path.append('./reader')
 sys.path.append('./visualize')
-sys.path.append('./task')
+sys.path.append('./process')
 from CooperativeReader import CooperativeReader
 
 class Filter3dBoxes():
@@ -63,7 +63,16 @@ class Filter3dBoxes():
         filtered_boxes_object_list = [box_object for box_object, volume in zip(bboxes_3d_object_list, volume_list) if volume in top_k_volumes]
         return filtered_boxes_object_list
     
-
+    def filter_according_to_size_percentile(self, bboxes_3d_object_list, percentile = 75):
+        volume_list = []
+        for box_object in bboxes_3d_object_list:
+            box3d = box_object.get_bbox3d_8_3()
+            box_size = np.abs(box3d[4] - box3d[2])
+            volume = box_size[0, 0] * box_size[0, 1] * box_size[0, 2]
+            volume_list.append(volume)
+        percentile_volume = np.percentile(volume_list, percentile)
+        filtered_boxes_object_list = [boxes_object for boxes_object, volume in zip(bboxes_3d_object_list, volume_list) if volume >= percentile_volume]
+        return filtered_boxes_object_list
 
     def filter_according_to_size_distance_occlusion_truncation(self, boxes_object_list, distance = 80, occlusion_degree = 1, truncation_degree = 1, topk = 10):#转换前和转化后
         distance_filted_boxes_object_list = self.filter_according_to_distance(boxes_object_list, distance)
@@ -124,7 +133,7 @@ if __name__ == "__main__":
 
     filtered_infra_3dboxes, filered_vehicle_3dboxes = Filter3dBoxes().test_filtered_infra_vehicle_according_to_size_distance_occlusion_truncation()
     
-    from GenerateCorrespondingListTask import GenerateCorrespondingListTask
+    from process.corresponding.GenerateCorrespondingListTask import GenerateCorrespondingListTask
     generateCorrespondingListTask = GenerateCorrespondingListTask('config.yml')
     infra_vehicle_corresponding_list, IoU_list, _ = generateCorrespondingListTask.generate_corresponding_list(filtered_infra_3dboxes, filered_vehicle_3dboxes)
     print(infra_vehicle_corresponding_list)

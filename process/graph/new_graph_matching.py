@@ -3,20 +3,21 @@ import sys
 sys.path.append('./reader')
 sys.path.append('./visualize')
 from CooperativeReader import CooperativeReader
-from GenerateCorrespondingListTask import GenerateCorrespondingListTask
+from process.corresponding.GenerateCorrespondingListTask import GenerateCorrespondingListTask
 from BBoxVisualizer_open3d import BBoxVisualizer_open3d as BBoxVisualizer
 from Filter3dBoxes import Filter3dBoxes
 from scipy.optimize import linear_sum_assignment
+from convert_utils import get_time
 import similarity_utils
 
 
 class BoxesObjectMatching():
     def __init__(self):
         # self.reader = CooperativeReader()
-        # self.infra_boxes_object_list, self.vehicle_boxes_object_list = self.reader.get_cooperative_infra_vehicle_bboxes_object_list()
+        # self.infra_boxes_object_list, self.vehicle_boxes_object_list = self.reader.get_cooperative_infra_vehicle_pointcloud_vehicle_coordinate()
 
         self.filter3dBoxes = Filter3dBoxes()
-        self.infra_boxes_object_list, self.vehicle_boxes_object_list = self.filter3dBoxes.get_filtered_infra_vehicle_according_to_size_distance_occlusion_truncation(topk=10)
+        self.infra_boxes_object_list, self.vehicle_boxes_object_list = self.filter3dBoxes.get_filtered_infra_vehicle_according_to_size_distance_occlusion_truncation(topk=20)
         
         infra_node_num, vehicle_node_num = len(self.infra_boxes_object_list), len(self.vehicle_boxes_object_list)
         
@@ -68,8 +69,12 @@ class BoxesObjectMatching():
 
 
     def get_matched_boxes_Hungarian_matching(self):
+        print('start KP')
         self.cal_KP()
+        print('KP completed')
+        print('start Hungarian matching')
         row_ind, col_ind = linear_sum_assignment(self.KP, maximize=True)
+        print('Hungarian matching completed')
         matches = list(zip(row_ind, col_ind))
         return matches
     
@@ -138,12 +143,16 @@ class BoxesObjectMatching():
         print('true result matches / true matches / total: {} / {} / {}'.format(cnt, len(total_matches), len(matched_infra_bboxes_object_list)))
         print('Accuracy(true result matches / true matches): ', cnt / len(total_matches))
 
-
-if __name__ == "__main__":
+@get_time
+def main():
     task = BoxesObjectMatching()
 
     matches = task.get_matched_boxes_Hungarian_matching()
-    print(matches)
+    # print(matches)
     # task.test_given_matches_visualization_view(matches)
     task.count_given_matches_accuracy(matches)
     task.output_intermediate_result()
+
+
+if __name__ == "__main__":
+    main()

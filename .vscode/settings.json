@@ -1,8 +1,9 @@
 {
     "python.analysis.extraPaths": [
-        "./task",
         "./reader",
         "./visualize",
-        "./task/module"
+        "./process/utils",
+        "./process",
+        "./process/corresponding"
     ]
 }

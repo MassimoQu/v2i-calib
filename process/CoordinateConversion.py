@@ -7,7 +7,7 @@ from InfraReader import InfraReader
 from CooperativeReader import CooperativeReader
 # from PointCloudVisualizer import PointCloudVisualizer
 
-from convert_utils import implement_T_3dbox_dict_n_8_3, implement_T_points_n_3, convert_Rt_to_T, implement_R_t_points_n_3, convert_T_to_Rt
+from process.utils.extrinsic_utils import implement_T_points_n_3, convert_Rt_to_T, implement_R_t_points_n_3, convert_T_to_Rt
 
 class CoordinateConversion():
     def __init__(self):
@@ -53,15 +53,6 @@ class CoordinateConversion():
         T_infra_lidar_2_vehicle_lidar = convert_Rt_to_T(*self.cooperative_reader.get_cooperative_lidar_i2v())
         return implement_T_points_n_3(T_infra_lidar_2_vehicle_lidar, points)
 
-    def convert_bboxes_dict_n_8_3_infra_lidar_2_vehicle_image(self, bboxes_dict):
-        # infra_lidar_2_world -> world_2_vehicle_novatel(rev) -> vehicle_novatel_2_vehicle_lidar(rev) -> vehicle_lidar_2_vehicle_camera -> vehicle_camera_2_vehicle_image        
-        # convert_bboxes_infra_lidar_2_vehicle_lidar -> convert_bboxes_lidar_2_image (vehicle)
-
-        self.convert_point_3_n_infra_lidar_2_vehicle_lidar(bboxes_dict)
-        T_vehicle_lidar_2_vehicle_camera = convert_Rt_to_T(self.vehicle_reader.get_vehicle_lidar2camera())
-        bboxes_dict = implement_T_3dbox_dict_n_8_3(T_vehicle_lidar_2_vehicle_camera, bboxes_dict)
-        return self.convert_bboxes_lidar_2_image(bboxes_dict)
-
     def convert_bboxes_object_list_infra_lidar_2_vehicle_lidar_given_T(self, bboxes_object_list, T_infra_lidar_2_vehicle_lidar):
         R_infra_lidar_2_vehicle_lidar, t_infra_lidar_2_vehicle_lidar = convert_T_to_Rt(T_infra_lidar_2_vehicle_lidar)
         converted_infra_bboxes_object_list = []
@@ -77,13 +68,7 @@ class CoordinateConversion():
 
         R_infra_lidar_2_vehicle_lidar, t_infra_lidar_2_vehicle_lidar = self.cooperative_reader.get_cooperative_lidar_i2v()
 
-        converted_infra_bboxes_object_list = []
-
-        for bbox_object in bboxes_object_list:
-            converted_infra_bboxes_object = bbox_object.copy()
-            converted_infra_bboxes_object.bbox3d_8_3 = implement_R_t_points_n_3(R_infra_lidar_2_vehicle_lidar, t_infra_lidar_2_vehicle_lidar, bbox_object.bbox3d_8_3)
-            converted_infra_bboxes_object_list.append(converted_infra_bboxes_object)
-        return converted_infra_bboxes_object_list
+        return self.convert_bboxes_object_list_infra_lidar_2_vehicle_lidar_given_T(bboxes_object_list, convert_Rt_to_T(R_infra_lidar_2_vehicle_lidar, t_infra_lidar_2_vehicle_lidar))
 
 
 if __name__ == '__main__':

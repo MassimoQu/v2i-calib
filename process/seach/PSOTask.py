@@ -9,11 +9,11 @@ sys.path.append('./reader')
 from InfraReader import InfraReader
 from VehicleReader import VehicleReader
 from CooperativeReader import CooperativeReader
-from module.Filter3dBoxes import Filter3dBoxes
+from process.Filter3dBoxes import Filter3dBoxes
 from Reader import Reader
-from module.PSO import PSO, PSO_new_type
-from module.calculate_IoU import box3d_iou
-from module.convert_utils import convert_Rt_to_T
+from seach.PSO import PSO, PSO_new_type
+from process.utils.IoU_utils import box3d_iou
+from process.utils.extrinsic_utils import convert_Rt_to_T
 
 
 class PSOTask(Task):
@@ -60,7 +60,7 @@ class PSOTask(Task):
         R = np.dot(Vt.T, U.T)
         
         if np.linalg.det(R) < 0:
-            Vt[2, :] *= -1
+            Vt[2, :] *= -1mm
             R = np.dot(Vt.T, U.T)
 
         t = -np.dot(R, centroid_infra.T) + centroid_vehicle.T

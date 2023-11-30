@@ -5,7 +5,7 @@ sys.path.append('./task/module')
 import numpy as np
 
 from CooperativeReader import CooperativeReader
-from calculate_IoU import box3d_iou
+from process.utils.IoU_utils import box3d_iou
 from Filter3dBoxes import Filter3dBoxes
 from CoordinateConversion import CoordinateConversion
 

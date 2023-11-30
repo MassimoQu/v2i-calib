@@ -10,12 +10,12 @@ import sys
 sys.path.append('./reader')
 sys.path.append('./visualize')
 import CooperativeReader
-import module.similarity_utils as similarity_utils
-from module.CoordinateConversion import CoordinateConversion
-from module.Filter3dBoxes import Filter3dBoxes
-from module.convert_utils import get_time
+import process.utils.similarity_utils as similarity_utils
+from process.CoordinateConversion import CoordinateConversion
+from process.Filter3dBoxes import Filter3dBoxes
+from process.utils.extrinsic_utils import get_time
 from BBoxVisualizer_open3d import BBoxVisualizer_open3d as BBoxVisualizer
-from GenerateCorrespondingListTask import GenerateCorrespondingListTask
+from process.corresponding.GenerateCorrespondingListTask import GenerateCorrespondingListTask
 
 
 class FGMTask():

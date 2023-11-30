@@ -1,15 +1,14 @@
 import os.path as osp
 import sys
-sys.path.append('./task/module')
-from convert_utils import implement_R_t_points_n_3
+sys.path.append('./process/utils/')
+from extrinsic_utils import implement_R_t_points_n_3
 from Reader import Reader
 from InfraReader import InfraReader
 from VehicleReader import VehicleReader
-from scipy.spatial.transform import Rotation
 
 
 class CooperativeReader():
-    def __init__(self, yaml_filename):
+    def __init__(self, yaml_filename = 'config.yml'):
         self.reader = Reader(yaml_filename)
         self.infra_reader = InfraReader(yaml_filename)
         self.vehicle_reader = VehicleReader(yaml_filename)
