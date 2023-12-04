@@ -113,49 +113,6 @@ def box3d_iou(corners1, corners2):
     iou = inter_vol / (vol1 + vol2 - inter_vol)
     return iou, iou_2d
 
-# ----------------------------------
-# Helper functions for evaluation
-# ----------------------------------
-
-def get_3d_box(box_size, heading_angle, center):
-    ''' Calculate 3D bounding box corners from its parameterization.
-
-    Input:
-        box_size: tuple of (length,wide,height)
-        heading_angle: rad scalar, clockwise from pos x axis
-        center: tuple of (x,y,z)
-    Output:
-        corners_3d: numpy array of shape (8,3) for 3D box cornders
-    '''
-    def roty(t):
-        c = np.cos(t)
-        s = np.sin(t)
-        return np.array([[c,  0,  s],
-                         [0,  1,  0],
-                         [-s, 0,  c]])
-
-    R = roty(heading_angle)
-    l,w,h = box_size
-    x_corners = [l/2,l/2,-l/2,-l/2,l/2,l/2,-l/2,-l/2]
-    y_corners = [h/2,h/2,h/2,h/2,-h/2,-h/2,-h/2,-h/2]
-    z_corners = [w/2,-w/2,-w/2,w/2,w/2,-w/2,-w/2,w/2]
-    corners_3d = np.dot(R, np.vstack([x_corners,y_corners,z_corners]))
-    corners_3d[0,:] = corners_3d[0,:] + center[0]
-    corners_3d[1,:] = corners_3d[1,:] + center[1]
-    corners_3d[2,:] = corners_3d[2,:] + center[2]
-    corners_3d = np.transpose(corners_3d)
-    return corners_3d
-
-    
-if __name__=='__main__':
-    print('------------------')
-    # get_3d_box(box_size, heading_angle, center)
-    corners_3d_ground  = get_3d_box((1.497255,1.644981, 3.628938), -1.531692, (2.882992 ,1.698800 ,20.785644)) 
-    corners_3d_predict = get_3d_box((1.458242, 1.604773, 3.707947), -1.549553, (2.756923, 1.661275, 20.943280 ))
-    
-    print(corners_3d_ground)
-    print(corners_3d_predict)
-    
-    (IOU_3d,IOU_2d)=box3d_iou(corners_3d_predict,corners_3d_ground)
-    print (IOU_3d,IOU_2d) #3d IoU/ 2d IoU of BEV(bird eye's view)
-      
+def cal_3dIoU(infra_box, vehicle_box):
+    iou3d, _ = box3d_iou(np.array(infra_box), np.array(vehicle_box))
+    return iou3d

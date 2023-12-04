@@ -6,8 +6,7 @@ sys.path.append('./process')
 sys.path.append('./process/utils')
 sys.path.append('./process/corresponding')
 from CooperativeReader import CooperativeReader
-from extrinsic_utils import convert_T_to_6DOF, convert_6DOF_to_T, get_time, convert_Rt_to_T
-from CoordinateConversion import CoordinateConversion
+from extrinsic_utils import convert_T_to_6DOF, convert_6DOF_to_T, get_time, convert_Rt_to_T, implement_T_3dbox_object_list
 from GenerateCorrespondingListTask import GenerateCorrespondingListTask
 
 # 尝试解构搜索范围，使其可以支持离散形式的搜索范围 
@@ -21,7 +20,6 @@ class PSO_deconstructX():
         self.infra_box_object_list = infra_box_object_list
         self.vehicle_box_object_list = vehicle_box_object_list
 
-        self.coordinate_conversion = CoordinateConversion()
         self.cooperative_reader = CooperativeReader('config.yml')
         self.true_T_6DOF_format = convert_T_to_6DOF(convert_Rt_to_T(*self.cooperative_reader.get_cooperative_lidar_i2v()))
         self.generate_corresponding_list_task = GenerateCorrespondingListTask('config.yml') #toedit
@@ -102,7 +100,7 @@ class PSO_deconstructX():
 
         for idx, X in enumerate(self.X):
             T = convert_6DOF_to_T(X)
-            converted_infra_box_object_list_copy = self.coordinate_conversion.convert_bboxes_object_list_infra_lidar_2_vehicle_lidar_given_T(self.infra_box_object_list, T)
+            converted_infra_box_object_list_copy = implement_T_3dbox_object_list(T, self.infra_box_object_list)
             self.Y[idx][0] = self.generate_corresponding_list_task.cal_Y_score(converted_infra_box_object_list_copy, self.vehicle_box_object_list)
         
 

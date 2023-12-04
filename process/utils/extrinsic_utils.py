@@ -1,17 +1,33 @@
 from scipy.spatial.transform import Rotation
 import numpy as np
 import time
+from functools import wraps
 
+def get_time(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        start_time = time.time()
+        result = func(*args, **kwargs)
+        end_time = time.time()
+        print(f"Time taken by {func.__name__}: {end_time - start_time} seconds")
+        return result
+    return wrapper
 
-def get_time(f):
-    def inner(*arg,**kwarg):
-        print('开始计时')
-        s_time = time.time()
-        res = f(*arg,**kwarg)
-        e_time = time.time()
-        print('耗时：{}秒'.format(e_time - s_time))
-        return res
-    return inner
+def get_time_judge(verbose):
+    def get_time(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            if verbose:
+                start_time = time.time()
+                result = func(*args, **kwargs)
+                end_time = time.time()
+                print(f"Time taken by {func.__name__}: {end_time - start_time} seconds")
+                return result
+            else:
+                return func(*args, **kwargs)
+        return wrapper
+    return get_time
+
 
 def convert_T_to_6DOF(T):
     R = T[:3, :3]
@@ -61,25 +77,28 @@ def implement_R_t_points_n_3(R, t, points):
     converted_points = converted_points.T.reshape(-1, 3)
     return converted_points
 
-def implement_T_points_n_3(T, points):
-    R, t = convert_T_to_Rt(T)
-    return implement_R_t_points_n_3(R, t, points)    
-
 def implement_R_t_3dbox_n_8_3(R, t, boxes):
     return implement_R_t_points_n_3(R, t, boxes).reshape(-1, 8, 3)
 
-def implement_R_t_3dbox_dict_n_8_3(R, t, boxes_dict):
-    for box_type, boxes in boxes_dict.items():
-        boxes_dict[box_type] = implement_R_t_3dbox_n_8_3(R, t, boxes)
-    return boxes_dict
+def implement_R_t_3dbox_object_list(R, t, box_object_list):
+    converted_box_object_list = []
+    for box_object in box_object_list:
+        converted_box_object = box_object.copy()
+        converted_box_object.bbox3d_8_3 = implement_R_t_3dbox_n_8_3(R, t, box_object.bbox3d_8_3)
+        converted_box_object_list.append(converted_box_object)
+    return converted_box_object_list
+
+def implement_T_points_n_3(T, points):
+    R, t = convert_T_to_Rt(T)
+    return implement_R_t_points_n_3(R, t, points)    
 
 def implement_T_3dbox_n_8_3(T, boxes):
     R, t = convert_T_to_Rt(T)
     return implement_R_t_3dbox_n_8_3(R, t, boxes)
 
-def implement_T_3dbox_dict_n_8_3(T, boxes_dict):
+def implement_T_3dbox_object_list(T, box_object_list):
     R, t = convert_T_to_Rt(T)
-    return implement_R_t_3dbox_dict_n_8_3(R, t, boxes_dict)
+    return implement_R_t_3dbox_object_list(R, t, box_object_list)
 
 def multiply_extrinsics(T1, T2):
     R1, t1 = convert_T_to_Rt(T1)
@@ -100,13 +119,13 @@ def get_extrinsic_from_two_points(points1, points2):
     # assert points1.shape[0] == 3
     # assert points1.shape[1] >= 3
 
-    centroid1 = np.mean(points1, axis=1)
-    centroid2 = np.mean(points2, axis=1)
+    centroid1 = np.mean(points1, axis=0)
+    centroid2 = np.mean(points2, axis=0)
 
-    points1 = points1 - centroid1.reshape(3, 1)
-    points2 = points2 - centroid2.reshape(3, 1)
+    points1 = points1 - centroid1
+    points2 = points2 - centroid2
 
-    H = np.dot(points2, points1.T)
+    H = np.dot(points1.T, points2)
     U, _, Vt = np.linalg.svd(H)
     R = np.dot(Vt.T, U.T)
     
@@ -114,7 +133,7 @@ def get_extrinsic_from_two_points(points1, points2):
         Vt[2, :] *= -1
         R = np.dot(Vt.T, U.T)
 
-    t = -np.dot(R, centroid2.reshape(3, 1)) + centroid1.reshape(3, 1)
+    t = -np.dot(R, centroid1.T) + centroid2.T
 
     T = np.eye(4)
     T[:3, :3] = R

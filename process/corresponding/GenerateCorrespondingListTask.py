@@ -1,11 +1,11 @@
 import sys
 sys.path.append('./reader')
-sys.path.append('./task/module')
+sys.path.append('./process/utils')
 
 import numpy as np
 
 from CooperativeReader import CooperativeReader
-from process.utils.IoU_utils import box3d_iou
+from IoU_utils import box3d_iou
 from Filter3dBoxes import Filter3dBoxes
 from CoordinateConversion import CoordinateConversion
 

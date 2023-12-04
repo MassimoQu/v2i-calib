@@ -2,7 +2,6 @@ import numpy as np
 import sys
 sys.path.append('./reader')
 sys.path.append('./visualize')
-sys.path.append('./process')
 from CooperativeReader import CooperativeReader
 
 class Filter3dBoxes():
@@ -27,7 +26,7 @@ class Filter3dBoxes():
         occulussion_filtered_boxes_object_list = self.filter_according_to_occlusion(boxes_object_list, occlusion_degree)
         truncation_filtered_boxes_object_list = self.filter_according_to_truncation(occulussion_filtered_boxes_object_list, truncation_degree)
         return truncation_filtered_boxes_object_list
-         
+    
     def filter_according_to_distance(self, boxes_object_list, distance = 80):
         filtered_boxes_object_list = []
         for box_object in boxes_object_list:
@@ -56,7 +55,7 @@ class Filter3dBoxes():
         for box_object in bboxes_3d_object_list:
             box3d = box_object.get_bbox3d_8_3()
             box_size = np.abs(box3d[4] - box3d[2])
-            volume = box_size[0, 0] * box_size[0, 1] * box_size[0, 2]
+            volume = box_size[0] * box_size[1] * box_size[2]
             volume_list.append(volume)
         k = min(k, len(volume_list))
         top_k_volumes = sorted(volume_list, reverse=True)[:k]

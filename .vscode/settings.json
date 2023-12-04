@@ -4,6 +4,8 @@
         "./visualize",
         "./process/utils",
         "./process",
-        "./process/corresponding"
+        "./process/corresponding",
+        "./process/graph",
+        "./process/seach"
     ]
 }

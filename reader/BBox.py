@@ -6,6 +6,13 @@ class BBox:
         self.truncated_state = truncated_state
         # self.bbox2d_4 = bbox_4
 
+    def __eq__(self, other):
+        if not isinstance(other, BBox):
+            return False
+        return (self.bbox_type == other.bbox_type and
+                self.occluded_state == other.occluded_state and
+                self.truncated_state == other.truncated_state)
+
     def get_bbox_type(self):
         return self.bbox_type
     
