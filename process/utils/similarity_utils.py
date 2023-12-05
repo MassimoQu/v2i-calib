@@ -3,10 +3,9 @@ import matplotlib.pyplot as plt
 import sys
 sys.path.append('./reader')
 sys.path.append('./process/utils')
-from CooperativeReader import CooperativeReader
 from IoU_utils import cal_3dIoU
 from bbox_utils import get_lwh_from_bbox3d_8_3, get_bbox3d_8_3_from_xyz_lwh, get_vector_between_bbox3d_8_3, get_length_between_bbox3d_8_3
-from statistic_utils import normalize_to_0_1
+
 
 def cal_similarity_size(infra_bbox_8_3, vehicle_bbox_8_3):
     '''
@@ -172,11 +171,6 @@ def test_similarity_length(infra_object_list, vehicle_object_list):
 def test_similarity_angle(infra_object_list, vehicle_object_list):
     pass
 
-
-if __name__ == "__main__":
-    cooperative_reader = CooperativeReader('config.yml')
-    infra_bboxes_object_list, vehicle_bboxes_object_list = cooperative_reader.get_cooperative_infra_vehicle_bboxes_object_list()
-    
 
 
 

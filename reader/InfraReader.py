@@ -5,7 +5,7 @@ from read_utils import read_json
 
 
 class InfraReader(Reader):
-    def __init__(self, data_folder, infra_file_name):
+    def __init__(self, infra_file_name, data_folder = './data'):
         super().__init__(data_folder)
         self.infra_file_name = infra_file_name
 

@@ -5,31 +5,32 @@ sys.path.append('./visualize')
 from CooperativeReader import CooperativeReader
 
 class Filter3dBoxes():
-    def __init__(self) -> None:
-        pass
+    def __init__(self, boxes_object_list):
+        self.boxes_object_list = boxes_object_list
 
-    def filter_according_to_occlusion(self, boxes_object_list, degree = 0):
+
+    def filter_according_to_occlusion(self, degree = 0):
         filtered_boxes_object_list = []
-        for box_object in boxes_object_list:
+        for box_object in self.boxes_object_list:
             if box_object.occluded_state <= degree:
                 filtered_boxes_object_list.append(box_object)
         return filtered_boxes_object_list
     
-    def filter_according_to_truncation(self, boxes_object_list, degree = 0):
+    def filter_according_to_truncation(self, degree = 0):
         filtered_boxes_object_list = []
-        for box_object in boxes_object_list:
+        for box_object in self.boxes_object_list:
             if box_object.truncated_state <= degree:
                 filtered_boxes_object_list.append(box_object)
         return filtered_boxes_object_list
     
-    def filter_according_to_occlusion_truncation(self, boxes_object_list, occlusion_degree = 0, truncation_degree = 0):
-        occulussion_filtered_boxes_object_list = self.filter_according_to_occlusion(boxes_object_list, occlusion_degree)
+    def filter_according_to_occlusion_truncation(self, occlusion_degree = 0, truncation_degree = 0):
+        occulussion_filtered_boxes_object_list = self.filter_according_to_occlusion(self.boxes_object_list, occlusion_degree)
         truncation_filtered_boxes_object_list = self.filter_according_to_truncation(occulussion_filtered_boxes_object_list, truncation_degree)
         return truncation_filtered_boxes_object_list
     
-    def filter_according_to_distance(self, boxes_object_list, distance = 80):
+    def filter_according_to_distance(self, distance = 80):
         filtered_boxes_object_list = []
-        for box_object in boxes_object_list:
+        for box_object in self.boxes_object_list:
             centroid = box_object.get_bbox3d_8_3().mean(axis=0)
             centroid_xy = centroid[:2]
             centroid_dist = np.linalg.norm(centroid_xy)
@@ -37,44 +38,33 @@ class Filter3dBoxes():
                 filtered_boxes_object_list.append(box_object)
 
         return filtered_boxes_object_list
-
-    def filter_according_to_size(self, bboxes_3d_object_list):
-        volume_list = []
-        for box_object in bboxes_3d_object_list:
-            box3d = box_object.get_bbox3d_8_3()
-            box_size = np.abs(box3d[4] - box3d[2])
-            volume = box_size[0, 0] * box_size[0, 1] * box_size[0, 2]
-            volume_list.append(volume)
-        median_volume = np.median(volume_list)
-        upper_quartile_volume = np.percentile(volume_list, 75)
-        filtered_boxes_object_list = [boxes_object for boxes_object, volume in zip(bboxes_3d_object_list, volume_list) if volume >= upper_quartile_volume]
-        return filtered_boxes_object_list
     
-    def filter_according_to_size_topK(self, bboxes_3d_object_list, k = 10):
+    def filter_according_to_size_topK(self, k = 10):
         volume_list = []
-        for box_object in bboxes_3d_object_list:
+        for box_object in self.boxes_object_list:
             box3d = box_object.get_bbox3d_8_3()
             box_size = np.abs(box3d[4] - box3d[2])
             volume = box_size[0] * box_size[1] * box_size[2]
             volume_list.append(volume)
         k = min(k, len(volume_list))
         top_k_volumes = sorted(volume_list, reverse=True)[:k]
-        filtered_boxes_object_list = [box_object for box_object, volume in zip(bboxes_3d_object_list, volume_list) if volume in top_k_volumes]
+        filtered_boxes_object_list = [box_object for box_object, volume in zip(self.boxes_object_list, volume_list) if volume in top_k_volumes]
         return filtered_boxes_object_list
     
-    def filter_according_to_size_percentile(self, bboxes_3d_object_list, percentile = 75):
+    def filter_according_to_size_percentile(self, percentile = 75):
         volume_list = []
-        for box_object in bboxes_3d_object_list:
+        for box_object in self.boxes_object_list:
             box3d = box_object.get_bbox3d_8_3()
             box_size = np.abs(box3d[4] - box3d[2])
             volume = box_size[0, 0] * box_size[0, 1] * box_size[0, 2]
             volume_list.append(volume)
         percentile_volume = np.percentile(volume_list, percentile)
-        filtered_boxes_object_list = [boxes_object for boxes_object, volume in zip(bboxes_3d_object_list, volume_list) if volume >= percentile_volume]
+        filtered_boxes_object_list = [boxes_object for boxes_object, volume in zip(self.boxes_object_list, volume_list) if volume >= percentile_volume]
         return filtered_boxes_object_list
 
-    def filter_according_to_size_distance_occlusion_truncation(self, boxes_object_list, distance = 80, occlusion_degree = 1, truncation_degree = 1, topk = 10):#转换前和转化后
-        distance_filted_boxes_object_list = self.filter_according_to_distance(boxes_object_list, distance)
+    # 参数局限，谨慎使用
+    def filter_according_to_size_distance_occlusion_truncation(self, distance = 80, occlusion_degree = 1, truncation_degree = 1, topk = 10):
+        distance_filted_boxes_object_list = self.filter_according_to_distance(self.boxes_object_list, distance)
         occlusion_truncation_filted_boxes_object_list = self.filter_according_to_occlusion_truncation(distance_filted_boxes_object_list, occlusion_degree, truncation_degree)
         size_filted_boxes_object_list = self.filter_according_to_size_topK(occlusion_truncation_filted_boxes_object_list, topk)
         return size_filted_boxes_object_list
@@ -111,18 +101,6 @@ class Filter3dBoxes():
         print('vehicle_boxes: {} -> {} ', len(occlusion_filted_vehicle_boxes_object_list), len(size_filted_vehicle_boxes_object_list))
 
         return size_filted_infra_boxes_object_list, size_filted_vehicle_boxes_object_list
-
-    def plot_boxes3d_distance_to_0(self, boxes3d_object_list):
-        import matplotlib.pyplot as plt
-        fig, ax = plt.subplots()
-        distance_list = []
-        for box3d_object in boxes3d_object_list:
-            centroid = box3d_object.get_bbox3d_8_3().mean(axis=0)
-            centroid_xy = centroid[:2]
-            distance = np.linalg.norm(centroid_xy)
-            distance_list.append(distance)
-        ax.boxplot(distance_list)
-        plt.show()
 
 
 

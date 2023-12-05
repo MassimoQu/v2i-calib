@@ -84,7 +84,7 @@ def implement_R_t_3dbox_object_list(R, t, box_object_list):
     converted_box_object_list = []
     for box_object in box_object_list:
         converted_box_object = box_object.copy()
-        converted_box_object.bbox3d_8_3 = implement_R_t_3dbox_n_8_3(R, t, box_object.bbox3d_8_3)
+        converted_box_object.bbox3d_8_3 = implement_R_t_3dbox_n_8_3(R, t, box_object.bbox3d_8_3).reshape(8, 3)
         converted_box_object_list.append(converted_box_object)
     return converted_box_object_list
 

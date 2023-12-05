@@ -18,12 +18,11 @@ from Filter3dBoxes import Filter3dBoxes
 class DataDistributionAnalysis():
     def __init__(self):
         cooperative_reader = CooperativeReader()
-        self.infra_boxes_object_list, self.vehicle_boxes_object_list = cooperative_reader.get_cooperative_infra_vehicle_bboxes_object_list()
-        filter_3dboxes = Filter3dBoxes()
+        self.infra_boxes_object_list, self.vehicle_boxes_object_list = CooperativeReader('003920', '020092').get_cooperative_infra_vehicle_boxes_object_list()
         # self.infra_boxes_object_list = filter_3dboxes.filter_according_to_size_percentile(self.infra_boxes_object_list, 75)
         # self.vehicle_boxes_object_list = filter_3dboxes.filter_according_to_size_percentile(self.vehicle_boxes_object_list, 75)
-        self.infra_boxes_object_list = filter_3dboxes.filter_according_to_size_distance_occlusion_truncation(self.infra_boxes_object_list, topk = 30)
-        self.vehicle_boxes_object_list = filter_3dboxes.filter_according_to_size_distance_occlusion_truncation(self.vehicle_boxes_object_list, topk = 30)
+        self.infra_boxes_object_list = Filter3dBoxes(self.infra_boxes_object_list).filter_according_to_size_topK(topk = 30)
+        self.vehicle_boxes_object_list = Filter3dBoxes(self.vehicle_boxes_object_list).filter_according_to_size_topK(topk = 30)
 
         extrinsic_candidate_generator = ExtrinsicCandidateGenerator(self.infra_boxes_object_list, self.vehicle_boxes_object_list)
         self.candidate6DOF_list = extrinsic_candidate_generator.get_whole_candidate6DOF_list()

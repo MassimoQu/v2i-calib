@@ -10,7 +10,7 @@ from graph_utils import get_full_connected_edge
 from bbox_utils import get_bbox3d_n_8_3_from_bbox_object_list
 from statistic_utils import normalize_to_0_1
 
-
+#单端
 def visualize_size_similarity_between_same_category(boxes_object_list):
     category_box_object_dict = {}
     for box_object in boxes_object_list:
@@ -101,14 +101,12 @@ def visualize_edge_property_similarity_between_category(boxes_object_list1, boxe
     
 
 if __name__ == '__main__':
-    cooperative_reader = CooperativeReader()
-    infra_boxes_object_list, vehicle_boxes_object_list = cooperative_reader.get_cooperative_infra_vehicle_bboxes_object_list()
+    infra_boxes_object_list, vehicle_boxes_object_list = CooperativeReader('003920', '020092').get_cooperative_infra_vehicle_boxes_object_list()
     
-    filter3dBoxes = Filter3dBoxes()
-    infra_boxes_object_list, vehicle_boxes_object_list = filter3dBoxes.get_filtered_infra_vehicle_according_to_size_distance_occlusion_truncation(topk=20)
-
-
+    infra_boxes_object_list = Filter3dBoxes(infra_boxes_object_list).filter_according_to_size_topK(k = 20)
+    vehicle_boxes_object_list = Filter3dBoxes(vehicle_boxes_object_list).filter_according_to_size_topK(k = 20)
     
-    visualize_edge_property_similarity_between_category(infra_boxes_object_list, vehicle_boxes_object_list, edge_property_calculator=cal_similarity_angle)
-    visualize_edge_property_similarity_between_category(infra_boxes_object_list, vehicle_boxes_object_list, edge_property_calculator=cal_similarity_length)
+    # visualize_edge_property_similarity_between_category(infra_boxes_object_list, vehicle_boxes_object_list, edge_property_calculator=cal_similarity_angle)
+    # visualize_edge_property_similarity_between_category(infra_boxes_object_list, vehicle_boxes_object_list, edge_property_calculator=cal_similarity_length)
 
+    visualize_size_similarity_between_same_category(infra_boxes_object_list)

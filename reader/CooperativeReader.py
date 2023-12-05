@@ -1,27 +1,30 @@
 import os.path as osp
 import sys
 sys.path.append('./process/utils/')
-from extrinsic_utils import implement_R_t_points_n_3
+from extrinsic_utils import implement_R_t_points_n_3, convert_Rt_to_T
 from read_utils import read_json
 from InfraReader import InfraReader
 from VehicleReader import VehicleReader
 
 
 class CooperativeReader():
-    def __init__(self, data_folder, infra_file_name, vehicle_file_name):
-        self.infra_reader = InfraReader(data_folder, infra_file_name)
-        self.vehicle_reader = VehicleReader(data_folder, vehicle_file_name)
+    def __init__(self, infra_file_name, vehicle_file_name, data_folder = './data'):
+        self.infra_reader = InfraReader(infra_file_name, data_folder)
+        self.vehicle_reader = VehicleReader(vehicle_file_name, data_folder)
 
     def parse_cooperative_lidar_i2v(self):
-        return osp.join(self.infra_reader.cooperative_folder, 'cooperative', 'calib', 'lidar_i2v', self.infra_reader.vehicle_file_name + '.json')
+        return osp.join(self.vehicle_reader.cooperative_folder, 'cooperative', 'calib', 'lidar_i2v', self.vehicle_reader.vehicle_file_name + '.json')
     
-    def get_cooperative_lidar_i2v(self):
+    def get_cooperative_Rt_i2v(self):
         lidar_i2v = read_json(self.parse_cooperative_lidar_i2v())
         rotation = lidar_i2v["rotation"]
         translation = lidar_i2v["translation"]
         return rotation, translation
     
-    def get_cooperative_infra_vehicle_bboxes_object_list(self):
+    def get_cooperative_T_i2v(self):
+        return convert_Rt_to_T(*self.get_cooperative_Rt_i2v())
+    
+    def get_cooperative_infra_vehicle_boxes_object_list(self):
         return self.infra_reader.get_infra_boxes_object_list(), self.vehicle_reader.get_vehicle_boxes_object_list()
     
     def get_cooperative_infra_vehicle_pointcloud(self):
@@ -29,14 +32,14 @@ class CooperativeReader():
     
     def get_cooperative_infra_vehicle_pointcloud_vehicle_coordinate(self):
         infra_pointcloud, vehicle_pointcloud = self.get_cooperative_infra_vehicle_pointcloud()
-        R_infra_lidar_2_vehicle_lidar, t_infra_lidar_2_vehicle_lidar = self.get_cooperative_lidar_i2v()
+        R_infra_lidar_2_vehicle_lidar, t_infra_lidar_2_vehicle_lidar = self.get_cooperative_Rt_i2v()
 
         converted_infra_pointcloud = implement_R_t_points_n_3(R_infra_lidar_2_vehicle_lidar, t_infra_lidar_2_vehicle_lidar, infra_pointcloud)
         return converted_infra_pointcloud, vehicle_pointcloud
     
-    def get_cooperative_infra_vehicle_boxes3d_object_lists_vehicle_coordinate(self):
-        infra_bboxes_object_list, vehicle_bboxes_object_list = self.get_cooperative_infra_vehicle_bboxes_object_list()
-        R_infra_lidar_2_vehicle_lidar, t_infra_lidar_2_vehicle_lidar = self.get_cooperative_lidar_i2v()
+    def get_cooperative_infra_vehicle_boxes_object_lists_vehicle_coordinate(self):
+        infra_bboxes_object_list, vehicle_bboxes_object_list = self.get_cooperative_infra_vehicle_boxes_object_list()
+        R_infra_lidar_2_vehicle_lidar, t_infra_lidar_2_vehicle_lidar = self.get_cooperative_Rt_i2v()
 
         converted_infra_bboxes_object_list = []
         for bbox_object in infra_bboxes_object_list:

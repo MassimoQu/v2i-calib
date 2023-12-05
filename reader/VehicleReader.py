@@ -5,7 +5,7 @@ from read_utils import read_json
 
 
 class VehicleReader(Reader):
-    def __init__(self, data_folder, vehicle_file_name):
+    def __init__(self, vehicle_file_name, data_folder = './data'):
         super().__init__(data_folder)
         self.vehicle_file_name = vehicle_file_name
 

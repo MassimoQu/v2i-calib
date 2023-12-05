@@ -18,7 +18,7 @@ from read_utils import read_json
 
 
 class Reader():
-    def __init__(self, data_folder):
+    def __init__(self, data_folder = './data'):
         self.data_folder = data_folder
         self.cooperative_folder = osp.join(data_folder, 'cooperative-vehicle-infrastructure')
 
