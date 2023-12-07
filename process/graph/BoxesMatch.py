@@ -25,6 +25,9 @@ class BoxesMatch():
         infra_node_num, vehicle_node_num = len(self.infra_boxes_object_list), len(self.vehicle_boxes_object_list)
         self.KP = np.zeros((infra_node_num, vehicle_node_num), dtype=np.float32)
 
+        self.result_matches = []
+        self.total_matches = []
+
         self.verbose = verbose
 
         @get_time_judge(verbose)
@@ -37,7 +40,7 @@ class BoxesMatch():
                         self.KP[i, j] = 0
                         continue         
                     # 检测框大小
-                    similarity_size = similarity_utils.cal_similarity_size(infra_bbox_object.get_bbox3d_8_3(), vehicle_bbox_object.get_bbox3d_8_3())
+                    # similarity_size = similarity_utils.cal_similarity_size(infra_bbox_object.get_bbox3d_8_3(), vehicle_bbox_object.get_bbox3d_8_3())
                     # 邻近k个点的相似度
                     similarity_knn = similarity_utils.cal_similarity_knn(self.infra_boxes_object_list, i, self.vehicle_boxes_object_list, j)
                     # self.KP[i, j] = int(similarity_size * 10) + int(similarity_knn)
@@ -50,6 +53,7 @@ class BoxesMatch():
         cal_KP()
 
         self.matches = self.get_matched_boxes_Hungarian_matching()
+
 
     def output_intermediate_KP(self):
         output_dir = './intermediate_output'
@@ -73,32 +77,52 @@ class BoxesMatch():
             matched_infra_bboxes_object_list.append(self.infra_boxes_object_list[match[0]])
             matched_vehicle_bboxes_object_list.append(self.vehicle_boxes_object_list[match[1]])
 
-        converted_matched_infra_bboxes_object_list = implement_T_3dbox_object_list(self.T_infra2vehicle, matched_infra_bboxes_object_list)
         converted_infra_boxes_object_list = implement_T_3dbox_object_list(self.T_infra2vehicle, self.infra_boxes_object_list)
         
-        total_matches = CorrespondingDetector(converted_infra_boxes_object_list, self.vehicle_boxes_object_list).corresponding_IoU_dict.keys()
+        self.total_matches = CorrespondingDetector(converted_infra_boxes_object_list, self.vehicle_boxes_object_list).corresponding_IoU_dict.keys()
         
-        true_result_matches = []
         for match in matches:
-            if match in total_matches:
-                true_result_matches.append(match)
+            if match in self.total_matches:
+                self.result_matches.append(match)
                 
-        cnt = len(true_result_matches)
+        cnt = len(self.result_matches)
 
-        cnt, total_matches_cnt, total_cnt =  cnt, len(total_matches), len(matched_infra_bboxes_object_list)
+        cnt, total_matches_cnt, total_cnt =  cnt, len(self.total_matches), len(matched_infra_bboxes_object_list)
 
         if self.verbose:
             print('true result matches / true matches / total: {} / {} / {}'.format(cnt, total_matches_cnt, total_cnt))
             print('Accuracy(true result matches / true matches): ', cnt / total_matches_cnt) if total_matches_cnt > 0 else print('Accuracy(true result matches / true matches): ', 0)
 
-        return cnt, total_matches_cnt, total_cnt
+            infra_result_matches_types_list, vehicle_result_matches_types_list = self.get_matches_types(self.result_matches)
+            infra_result_matches_types_list = sorted(infra_result_matches_types_list)
+            vehicle_result_matches_types_list = sorted(vehicle_result_matches_types_list)
+            print('infra_result_matches_types_list: ', infra_result_matches_types_list)
+            print('vehicle_result_matches_types_list: ', vehicle_result_matches_types_list)
 
-def main():
-    infra_boxes_object_list, vehicle_boxes_object_list = CooperativeReader('003920', '020092').get_cooperative_infra_vehicle_boxes_object_list()
-    T_infra2vehicle = CooperativeReader('003920', '020092').get_cooperative_T_i2v()
+            infra_total_matches_types_list, vehicle_total_matches_types_list = self.get_matches_types(self.total_matches)
+            infra_total_matches_types_list = sorted(infra_total_matches_types_list)
+            vehicle_total_matches_types_list = sorted(vehicle_total_matches_types_list)
+            infra_missing_matches_types_list = list(set(infra_total_matches_types_list) - set(infra_result_matches_types_list))
+            vehicle_missing_matches_types_list = list(set(vehicle_total_matches_types_list) - set(vehicle_result_matches_types_list))
+            print('infra_missing_matches_types_list: ', infra_missing_matches_types_list)
+            print('vehicle_missing_matches_types_list: ', vehicle_missing_matches_types_list)
+
+        return cnt, total_matches_cnt, total_cnt
     
-    infra_boxes_object_list = Filter3dBoxes(infra_boxes_object_list).filter_according_to_size_topK(20)
-    vehicle_boxes_object_list = Filter3dBoxes(vehicle_boxes_object_list).filter_according_to_size_topK(20)
+    def get_matches_types(self, matches):
+        infra_result_matches_types = []
+        vehicle_result_matches_types = []
+        for match in matches:
+            infra_result_matches_types.append(self.infra_boxes_object_list[match[0]].get_bbox_type())
+            vehicle_result_matches_types.append(self.vehicle_boxes_object_list[match[1]].get_bbox_type())
+        return infra_result_matches_types, vehicle_result_matches_types
+
+def specific_test_boxes_match(infra_num = '003920', vehicle_num = '020092', k = 10):
+    infra_boxes_object_list, vehicle_boxes_object_list = CooperativeReader(infra_num, vehicle_num).get_cooperative_infra_vehicle_boxes_object_list()
+    T_infra2vehicle = CooperativeReader(infra_num, vehicle_num).get_cooperative_T_i2v()
+    
+    infra_boxes_object_list = Filter3dBoxes(infra_boxes_object_list).filter_according_to_size_topK(k)
+    vehicle_boxes_object_list = Filter3dBoxes(vehicle_boxes_object_list).filter_according_to_size_topK(k)
     
     task = BoxesMatch(infra_boxes_object_list, vehicle_boxes_object_list, T_infra2vehicle, verbose=True)
     task.cal_matches_accuracy()
@@ -124,7 +148,10 @@ def batching_test_boxes_match(verbose = False, k = 10):
 
         try:
             start_time = time.time()  # 开始计时
-            matches_cnt, available_matches_cnt, filtered_cnt = BoxesMatch(filtered_infra_boxes_object_list, filtered_vehicle_boxes_object_list, T_infra2vehicle, verbose).cal_matches_accuracy()
+
+            boxes_matcher = BoxesMatch(filtered_infra_boxes_object_list, filtered_vehicle_boxes_object_list, T_infra2vehicle, verbose)
+            matches_cnt, available_matches_cnt, filtered_cnt = boxes_matcher.cal_matches_accuracy()
+            
             end_time = time.time()  # 结束计时
 
             if matches_cnt > 0:
@@ -142,6 +169,7 @@ def batching_test_boxes_match(verbose = False, k = 10):
         except Exception as e:
             if verbose:
                 print('Error: ', infra_file_name, vehicle_file_name)
+                print(e)
             error_matches = {}
             error_matches['infra_file_name'] = infra_file_name
             error_matches['vehicle_file_name'] = vehicle_file_name
@@ -175,5 +203,5 @@ def batching_test_boxes_match(verbose = False, k = 10):
 
 
 if __name__ == "__main__":
-    # main()
-    batching_test_boxes_match(verbose=True, k=10)
+    specific_test_boxes_match('005298', '001374', k=32)
+    # batching_test_boxes_match(verbose=True, k=20)

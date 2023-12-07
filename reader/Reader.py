@@ -18,7 +18,7 @@ from read_utils import read_json
 
 
 class Reader():
-    def __init__(self, data_folder = './data'):
+    def __init__(self, data_folder = '/mnt/c/Users/10612/Downloads/cooperative_data'):
         self.data_folder = data_folder
         self.cooperative_folder = osp.join(data_folder, 'cooperative-vehicle-infrastructure')
 
@@ -37,11 +37,14 @@ class Reader():
         ]
         return get_bbox3d_8_3_from_xyz_lwh_yaw(center_lidar, obj_size, yaw_lidar)
     
+    def get_2dboxes_4(self, label):
+        return [label["2d_box"]["xmin"], label["2d_box"]["ymin"], label["2d_box"]["xmax"], label["2d_box"]["ymax"]]
+
     def get_3dbbox_object_list(self, path_label):
         labels = read_json(path_label) 
         bbox3d_list = []
         for label in labels:
-            bbox3d_list.append(BBox3d(label["type"].lower(), self.get_3dboxes_8_3(label), int(label["occluded_state"]), int(label["truncated_state"]) ))
+            bbox3d_list.append(BBox3d(label["type"].lower(), self.get_3dboxes_8_3(label), self.get_2dboxes_4(label), int(label["occluded_state"]), float(label["truncated_state"]), float(label["alpha"])) )
         return bbox3d_list
 
     def get_pointcloud(self, path_pointcloud):

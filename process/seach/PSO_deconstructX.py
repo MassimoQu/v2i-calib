@@ -20,8 +20,8 @@ class PSO_deconstructX():
         self.infra_box_object_list = infra_box_object_list
         self.vehicle_box_object_list = vehicle_box_object_list
 
-        self.cooperative_reader = CooperativeReader('config.yml')
-        self.true_T_6DOF_format = convert_T_to_6DOF(convert_Rt_to_T(*self.cooperative_reader.get_cooperative_lidar_i2v()))
+        self.cooperative_reader = CooperativeReader()
+        self.true_T_6DOF_format = convert_T_to_6DOF(convert_Rt_to_T(*self.cooperative_reader.get_cooperative_Rt_i2v()))
         self.generate_corresponding_list_task = GenerateCorrespondingListTask('config.yml') #toedit
  
         self.w_max, self.w_min = w

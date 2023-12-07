@@ -5,7 +5,7 @@ from read_utils import read_json
 
 
 class VehicleReader(Reader):
-    def __init__(self, vehicle_file_name, data_folder = './data'):
+    def __init__(self, vehicle_file_name, data_folder = '/mnt/c/Users/10612/Downloads/cooperative_data'):
         super().__init__(data_folder)
         self.vehicle_file_name = vehicle_file_name
 
@@ -21,23 +21,23 @@ class VehicleReader(Reader):
     def parse_vehicle_lidar2novatel_path(self):
         return osp.join(self.cooperative_folder, 'vehicle-side', 'calib', 'lidar_to_novatel', self.vehicle_file_name + '.json')
     
-    # def parse_vehicle_image_path(self):
-    #     folder_vehicle_image = self.reader.para_yaml['boxes']['folder_vehicle_images']
-    #     return osp.join(folder_vehicle_image, self.vehicle_file_name + '.jpg')
+    def parse_vehicle_image_path(self):
+        folder_vehicle_image = osp.join(self.data_folder, 'cooperative-vehicle-infrastructure-vehicle-side-image')
+        return osp.join(folder_vehicle_image, self.vehicle_file_name + '.jpg')
 
-    # def parse_vehicle_pointcloud_path(self):
-    #     folder_vehicle_pointcloud = self.reader.para_yaml['boxes']['folder_vehicle_pointcloud']
-    #     return osp.join(folder_vehicle_pointcloud, self.vehicle_file_name + '.pcd')
+    def parse_vehicle_pointcloud_path(self):
+        folder_vehicle_pointcloud = osp.join(self.data_folder, 'cooperative-vehicle-infrastructure-vehicle-side-velodyne')
+        return osp.join(folder_vehicle_pointcloud, self.vehicle_file_name + '.pcd')
 
     def parse_vehicle_label_path(self):
         return osp.join(self.cooperative_folder, 'vehicle-side', 'label', 'lidar', self.vehicle_file_name + '.json')
 
 
-    # def get_vehicle_image(self):
-    #     return cv2.imread(self.parse_vehicle_image_path())
+    def get_vehicle_image(self):
+        return cv2.imread(self.parse_vehicle_image_path())
 
-    # def get_vehicle_pointcloud(self):
-    #     return self.reader.get_pointcloud(self.parse_vehicle_pointcloud_path())
+    def get_vehicle_pointcloud(self):
+        return self.get_pointcloud(self.parse_vehicle_pointcloud_path())
   
     def get_vehicle_boxes_object_list(self):
         return self.get_3dbbox_object_list(self.parse_vehicle_label_path())

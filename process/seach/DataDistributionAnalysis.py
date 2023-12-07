@@ -10,19 +10,20 @@ sys.path.append('./process/serach')
 sys.path.append('./process/corresponding')
 from CooperativeReader import CooperativeReader
 from ExtrinsicCandidateGenerate import ExtrinsicCandidateGenerator
-from extrinsic_utils import implement_T_3dbox_object_list, convert_T_to_6DOF, convert_Rt_to_T
+from extrinsic_utils import implement_T_3dbox_object_list, convert_T_to_6DOF, convert_Rt_to_T, get_time
 from CorrespondingDetector import CorrespondingDetector
 from Filter3dBoxes import Filter3dBoxes
 
 
 class DataDistributionAnalysis():
-    def __init__(self):
-        cooperative_reader = CooperativeReader()
-        self.infra_boxes_object_list, self.vehicle_boxes_object_list = CooperativeReader('003920', '020092').get_cooperative_infra_vehicle_boxes_object_list()
+    def __init__(self, infra_num, vehicle_num):
+        cooperative_reader = CooperativeReader(infra_num, vehicle_num)
+        self.infra_boxes_object_list, self.vehicle_boxes_object_list = cooperative_reader.get_cooperative_infra_vehicle_boxes_object_list()
         # self.infra_boxes_object_list = filter_3dboxes.filter_according_to_size_percentile(self.infra_boxes_object_list, 75)
         # self.vehicle_boxes_object_list = filter_3dboxes.filter_according_to_size_percentile(self.vehicle_boxes_object_list, 75)
-        self.infra_boxes_object_list = Filter3dBoxes(self.infra_boxes_object_list).filter_according_to_size_topK(topk = 30)
-        self.vehicle_boxes_object_list = Filter3dBoxes(self.vehicle_boxes_object_list).filter_according_to_size_topK(topk = 30)
+        self.infra_boxes_object_list = Filter3dBoxes(self.infra_boxes_object_list).filter_according_to_size_topK(k = 30)
+        self.vehicle_boxes_object_list = Filter3dBoxes(self.vehicle_boxes_object_list).filter_according_to_size_topK(k = 30)
+        self.T_infra2vehicle = convert_Rt_to_T(*cooperative_reader.get_cooperative_Rt_i2v())
 
         extrinsic_candidate_generator = ExtrinsicCandidateGenerator(self.infra_boxes_object_list, self.vehicle_boxes_object_list)
         self.candidate6DOF_list = extrinsic_candidate_generator.get_whole_candidate6DOF_list()
@@ -78,6 +79,7 @@ class DataDistributionAnalysis():
             print('--------------------------------------------------------')
             cnt += 1
 
+    @get_time
     def get_rough6DOF_from_all_candidateT_list(self):
         rough6DOF_list = []
         cnt = 0
@@ -85,7 +87,7 @@ class DataDistributionAnalysis():
             infra_boxes_object_list, vehicle_boxes_object_list = self.infra_boxes_object_list.copy(), self.vehicle_boxes_object_list.copy()
             converted_infra_boxes_object_list = implement_T_3dbox_object_list(candidateT, infra_boxes_object_list)
             corresponding_detector = CorrespondingDetector(converted_infra_boxes_object_list, vehicle_boxes_object_list)
-            if corresponding_detector.get_matched_num() > 2:
+            if corresponding_detector.get_matched_num() > 10:
                 rough6DOF_list.append(convert_T_to_6DOF(candidateT))
                 print('cnt / candidate : {} / {} '.format(cnt, len(self.candidateT_list)))
                 print('matched_num / total_num : {} / {} '.format(corresponding_detector.get_matched_num(), corresponding_detector.get_total_num()))
@@ -95,14 +97,13 @@ class DataDistributionAnalysis():
             cnt += 1
         print('len(rough6DOF_list): ', len(rough6DOF_list))
 
-        true6DOF = convert_T_to_6DOF(convert_Rt_to_T(*CooperativeReader().get_cooperative_lidar_i2v()))
-        print('true6DOF: ', true6DOF)
+        print('true6DOF: ', convert_T_to_6DOF(self.T_infra2vehicle))
 
         return rough6DOF_list
 
 
 if __name__ == "__main__":
-    dataDistributionAnalysis = DataDistributionAnalysis()
+    dataDistributionAnalysis = DataDistributionAnalysis('005298', '001374')
     # dataDistributionAnalysis.test_IoU_num_between_all_candidateT_list()
     # dataDistributionAnalysis.test__DBSCAN_cluster()
 

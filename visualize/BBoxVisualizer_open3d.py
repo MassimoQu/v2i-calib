@@ -2,12 +2,15 @@ import numpy as np
 import open3d as o3d
 import sys
 sys.path.append('./reader')
-sys.path.append('./process')
+sys.path.append('./process/utils')
 from CooperativeReader import CooperativeReader
-from BBoxVisualizer import BBoxVisualizer
+from CooperativeBatchingReader import CooperativeBatchingReader
+from VehicleReader import VehicleReader
+from Filter3dBoxes import Filter3dBoxes
+from extrinsic_utils import implement_T_points_n_3, implement_T_3dbox_object_list
 
 
-class BBoxVisualizer_open3d(BBoxVisualizer):
+class BBoxVisualizer_open3d():
 
     def __init__(self) -> None:
         pass
@@ -46,11 +49,13 @@ class BBoxVisualizer_open3d(BBoxVisualizer):
         vis = o3d.visualization.Visualizer()
         vis.create_window()
         # 绘制点云
-        for pointcloud in pointclouds_list:
+        pointcloud_colors = [(0, 1, 0), (1, 0, 0)]
+
+        for i, pointcloud in enumerate(pointclouds_list):
             pcd = o3d.geometry.PointCloud()
             pcd.points = o3d.utility.Vector3dVector(pointcloud)
             num_points = len(pcd.points)
-            colors = np.random.rand(num_points, 3)
+            colors = np.tile(pointcloud_colors[i%2], (num_points, 1))
             pcd.colors = o3d.utility.Vector3dVector(colors)
 
             vis.add_geometry(pcd)
@@ -66,6 +71,15 @@ class BBoxVisualizer_open3d(BBoxVisualizer):
         vis.run()
         vis.destroy_window()
 
+    def plot_boxes_8_3_list(self, boxes_8_3_list, color_list):
+        vis = o3d.visualization.Visualizer()
+        vis.create_window()
+        for color_, boxes_8_3 in zip(color_list, boxes_8_3_list):
+            box3d = self.draw_box3d_open3d(boxes_8_3, color=color_)
+            vis.add_geometry(box3d)
+        vis.run()
+        vis.destroy_window()
+
     def plot_boxes3d_lists(self, boxes_lists, color_list):
         vis = o3d.visualization.Visualizer()
         vis.create_window()
@@ -76,11 +90,38 @@ class BBoxVisualizer_open3d(BBoxVisualizer):
         vis.run()  # 开始事件循环
         vis.destroy_window()
 
+    def visualize_specific_type_boxes_object_within_infra_vehicle_boxes_object_list(self, boxes_object_list, pointcloud_list, specific_type = 'car', colors_list = [[1, 0, 0], [0, 1, 0], [0, 1, 1], [1, 0, 1]]):
+        specific_boxes_lists = []
+        specific_boxes_lists.append(boxes_object_list[0])
+        specific_boxes_lists.append(boxes_object_list[1])
+        specific_boxes_lists.append(Filter3dBoxes(boxes_object_list[0]).filter_according_to_category(specific_type))
+        specific_boxes_lists.append(Filter3dBoxes(boxes_object_list[1]).filter_according_to_category(specific_type))
+        self.plot_boxes3d_lists_pointcloud_lists(specific_boxes_lists, pointcloud_list, colors_list)
+
+
+def test_alpha_property():
+    reader = CooperativeBatchingReader('config.yml')
+    for infra_file_name, vehicle_file_name, infra_boxes_object_list, vehicle_boxes_object_list, infra_pointcloud, vehicle_pointcloud, T_infra2vehicle in reader.generate_infra_vehicle_bboxes_object_list():
+        converted_infra_boxes_object_list = implement_T_3dbox_object_list(T_infra2vehicle, infra_boxes_object_list)
+        converted_infra_pointcloud = implement_T_points_n_3(T_infra2vehicle, infra_pointcloud)
+        boxes_color_list = [[1, 0, 0], [0, 1, 0], [0, 1, 1], [1, 0, 1]]
+        BBoxVisualizer_open3d().visualize_specific_type_boxes_object_within_infra_vehicle_boxes_object_list([converted_infra_boxes_object_list, vehicle_boxes_object_list], [converted_infra_pointcloud, vehicle_pointcloud], specific_type='car', colors_list=boxes_color_list)
+        print('infra_file_name: ', infra_file_name)
+        print('vehicle_file_name: ', vehicle_file_name)
+        print('infra_alpha: ', infra_boxes_object_list[0].alpha)
+
 
 if '__main__' == __name__:
-    cooperative_reader = CooperativeReader('config.yml')
-    converted_infra_boxes_object_list, vehicle_boxes_object_list = cooperative_reader.get_cooperative_infra_vehicle_boxes3d_object_lists_vehicle_coordinate()
-    
-    boxes_color_list = [[1, 0, 0], [0, 1, 0]]
-    BBoxVisualizer_open3d().plot_boxes3d_lists_pointcloud_lists([converted_infra_boxes_object_list, vehicle_boxes_object_list], [], boxes_color_list)
+    # cooperative_reader = CooperativeReader('005298', '001374')
+    # converted_infra_boxes_object_list, vehicle_boxes_object_list = cooperative_reader.get_cooperative_infra_vehicle_boxes_object_lists_vehicle_coordinate()
+    # converted_infra_pointcloud, vehicle_pointcloud = cooperative_reader.get_cooperative_infra_vehicle_pointcloud_vehicle_coordinate()
 
+    # boxes_color_list = [[1, 0, 0], [0, 1, 0], [0, 1, 1], [1, 0, 1]]
+    # BBoxVisualizer_open3d().visualize_specific_type_boxes_object_within_infra_vehicle_boxes_object_list([converted_infra_boxes_object_list, vehicle_boxes_object_list], [converted_infra_pointcloud, vehicle_pointcloud], specific_type='car', colors_list=boxes_color_list)
+
+    # test_alpha_property()
+
+    vehicle_reader = VehicleReader('015904')
+    BBoxVisualizer_open3d().plot_boxes3d_lists_pointcloud_lists([vehicle_reader.get_vehicle_boxes_object_list()], [vehicle_reader.get_vehicle_pointcloud()], [(1, 0, 0)])
+
+    

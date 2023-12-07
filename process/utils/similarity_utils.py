@@ -3,13 +3,16 @@ import matplotlib.pyplot as plt
 import sys
 sys.path.append('./reader')
 sys.path.append('./process/utils')
+sys.path.append('./visualize')
 from IoU_utils import cal_3dIoU
 from bbox_utils import get_lwh_from_bbox3d_8_3, get_bbox3d_8_3_from_xyz_lwh, get_vector_between_bbox3d_8_3, get_length_between_bbox3d_8_3
+from BBoxVisualizer_open3d import BBoxVisualizer_open3d as BBoxVisualizer
 
 
 def cal_similarity_size(infra_bbox_8_3, vehicle_bbox_8_3):
     '''
         使用 3D IoU 计算两个框的大小相似度
+        构成 size 的 lwh 是包含了角度的信息，不能反映单纯size所要所表现出的意义
     '''
     il, iw, ih = get_lwh_from_bbox3d_8_3(infra_bbox_8_3)
     vl, vw, vh = get_lwh_from_bbox3d_8_3(vehicle_bbox_8_3)
@@ -18,6 +21,8 @@ def cal_similarity_size(infra_bbox_8_3, vehicle_bbox_8_3):
     vehicle_box = get_bbox3d_8_3_from_xyz_lwh([0, 0, 0], [vl, vw, vh])
 
     similarity_size = cal_3dIoU(np.array(infra_box), np.array(vehicle_box))
+
+    BBoxVisualizer().plot_boxes_8_3_list([infra_box, vehicle_box], [(1, 0, 0), (0, 1, 0)])
 
     return similarity_size
 
@@ -41,6 +46,8 @@ def cal_similarity_angle(infra_bbox_2_8_3, vehicle_bbox_2_8_3):
     #                           (np.linalg.norm(infra_vector) * np.linalg.norm(vehicle_vector)), -1.0, 1.0)
     
     similarity_angle = np.dot(infra_vector, vehicle_vector.T) / (np.linalg.norm(infra_vector) * np.linalg.norm(vehicle_vector))
+
+    
 
     # if similarity_angle == n
     return np.abs(similarity_angle)
@@ -77,6 +84,7 @@ def get_KNN_points(box_object_list, index, k):
             selected_box_object_list.append(box_object)
 
     sorted_index = np.argsort(distances)
+
     pair_points =  [box_object for box_object in np.array(selected_box_object_list)[sorted_index][:k]]
     return pair_points
 
@@ -85,8 +93,8 @@ def count_knn_similarity(edge1_point, edge1_start_point, edge2_point, edge2_star
     # length_similar
     length_similar = cal_similarity_length((edge1_start_point.get_bbox3d_8_3(), edge1_point.get_bbox3d_8_3()), (edge2_start_point.get_bbox3d_8_3(), edge2_point.get_bbox3d_8_3()))
 
-    # size_similar
-    size_similar = cal_similarity_size(edge1_point.get_bbox3d_8_3(), edge2_point.get_bbox3d_8_3())
+    # # size_similar
+    # size_similar = cal_similarity_size(edge1_point.get_bbox3d_8_3(), edge2_point.get_bbox3d_8_3())
 
     # angle_similar
     angle_similar = cal_similarity_angle((edge1_start_point.get_bbox3d_8_3(), edge1_point.get_bbox3d_8_3()), (edge2_start_point.get_bbox3d_8_3(), edge2_point.get_bbox3d_8_3()))
@@ -97,7 +105,7 @@ def count_knn_similarity(edge1_point, edge1_start_point, edge2_point, edge2_star
     # print(length_similar + size_similar + angle_similar)
     # print('-----------------------------------')
     
-    return length_similar + size_similar + angle_similar
+    return length_similar + angle_similar #+ size_similar
 
 
 def cal_similarity_knn(infra_object_list, infra_index, vehicle_object_list, vehicle_index, k = 0):
@@ -114,6 +122,9 @@ def cal_similarity_knn(infra_object_list, infra_index, vehicle_object_list, vehi
     infra_pair_points = get_KNN_points(infra_object_list, infra_index, k_infra)
     vehicle_pair_points = get_KNN_points(vehicle_object_list, vehicle_index, k_vehicle)
     
+    # BBoxVisualizer().plot_boxes3d_lists([infra_pair_points, vehicle_pair_points, [infra_object_list[infra_index]], [vehicle_object_list[vehicle_index]]], [(1, 0, 0), (0, 1, 0), (0, 1, 1), (1, 0, 1)])
+    
+
     similarity = 0
 
     for infra_pair_point in infra_pair_points:

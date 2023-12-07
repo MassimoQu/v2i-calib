@@ -5,7 +5,7 @@ sys.path.append('./visualize')
 from CooperativeReader import CooperativeReader
 
 class Filter3dBoxes():
-    def __init__(self, boxes_object_list):
+    def __init__(self, boxes_object_list=None):
         self.boxes_object_list = boxes_object_list
 
 
@@ -62,6 +62,13 @@ class Filter3dBoxes():
         filtered_boxes_object_list = [boxes_object for boxes_object, volume in zip(self.boxes_object_list, volume_list) if volume >= percentile_volume]
         return filtered_boxes_object_list
 
+    def filter_according_to_category(self, category):
+        filtered_boxes_object_list = []
+        for box_object in self.boxes_object_list:
+            if box_object.get_bbox_type().lower() == category.lower():
+                filtered_boxes_object_list.append(box_object)
+        return filtered_boxes_object_list
+
     # 参数局限，谨慎使用
     def filter_according_to_size_distance_occlusion_truncation(self, distance = 80, occlusion_degree = 1, truncation_degree = 1, topk = 10):
         distance_filted_boxes_object_list = self.filter_according_to_distance(self.boxes_object_list, distance)
@@ -70,32 +77,32 @@ class Filter3dBoxes():
         return size_filted_boxes_object_list
 
     def get_filtered_infra_vehicle_according_to_size_distance_occlusion_truncation(self, infra_filtered_distance = 80, vehicle_filterd_distance = 45, occlusion_degree = 1, truncation_degree = 1, topk = 10):
-        cooperative_reader = CooperativeReader('config.yml')
-        converted_infra_boxes_object_list, vehicle_boxes_object_list = cooperative_reader.get_cooperative_infra_vehicle_boxes3d_object_lists_vehicle_coordinate()
+        cooperative_reader = CooperativeReader()
+        converted_infra_boxes_object_list, vehicle_boxes_object_list = cooperative_reader.get_cooperative_infra_vehicle_boxes_object_lists_vehicle_coordinate()
         filtered_infra_3dboxes = self.filter_according_to_size_distance_occlusion_truncation(converted_infra_boxes_object_list, infra_filtered_distance, occlusion_degree, truncation_degree, topk)
         filered_vehicle_3dboxes = self.filter_according_to_size_distance_occlusion_truncation(vehicle_boxes_object_list, vehicle_filterd_distance, occlusion_degree, truncation_degree, topk)
         return filtered_infra_3dboxes, filered_vehicle_3dboxes
 
 
     def test_filtered_infra_vehicle_according_to_size_distance_occlusion_truncation(self):
-        cooperative_reader = CooperativeReader('config.yml')
-        converted_infra_boxes_object_list, vehicle_boxes_object_list = cooperative_reader.get_cooperative_infra_vehicle_boxes3d_object_lists_vehicle_coordinate()
+        cooperative_reader = CooperativeReader()
+        converted_infra_boxes_object_list, vehicle_boxes_object_list = cooperative_reader.get_cooperative_infra_vehicle_boxes_object_lists_vehicle_coordinate()
         
-        distance_filted_infra_boxes_object_list = Filter3dBoxes().filter_according_to_distance(converted_infra_boxes_object_list, 80)
-        distance_filted_vehicle_boxes_object_list =  Filter3dBoxes().filter_according_to_distance(vehicle_boxes_object_list, 45)
+        distance_filted_infra_boxes_object_list = Filter3dBoxes(converted_infra_boxes_object_list).filter_according_to_distance(80)
+        distance_filted_vehicle_boxes_object_list =  Filter3dBoxes(vehicle_boxes_object_list).filter_according_to_distance(45)
         print('distance filter:')
         print('infra_boxes: {} -> {} ', len(converted_infra_boxes_object_list), len(distance_filted_infra_boxes_object_list))
         print('vehicle_boxes: {} -> {} ', len(vehicle_boxes_object_list), len(distance_filted_vehicle_boxes_object_list))
 
         degree = 1
-        occlusion_filted_infra_boxes_object_list = Filter3dBoxes().filter_according_to_occlusion_truncation(distance_filted_infra_boxes_object_list, degree, degree)
-        occlusion_filted_vehicle_boxes_object_list = Filter3dBoxes().filter_according_to_occlusion_truncation(distance_filted_vehicle_boxes_object_list, degree, degree)
+        occlusion_filted_infra_boxes_object_list = Filter3dBoxes(distance_filted_infra_boxes_object_list).filter_according_to_occlusion_truncation(degree, degree)
+        occlusion_filted_vehicle_boxes_object_list = Filter3dBoxes(distance_filted_vehicle_boxes_object_list).filter_according_to_occlusion_truncation(degree, degree)
         print('occlusion filter:')
         print('infra_boxes: {} -> {} ', len(distance_filted_infra_boxes_object_list), len(occlusion_filted_infra_boxes_object_list))
         print('vehicle_boxes: {} -> {} ', len(distance_filted_vehicle_boxes_object_list), len(occlusion_filted_vehicle_boxes_object_list))
 
-        size_filted_infra_boxes_object_list = Filter3dBoxes().filter_according_to_size(occlusion_filted_infra_boxes_object_list)
-        size_filted_vehicle_boxes_object_list = Filter3dBoxes().filter_according_to_size(occlusion_filted_vehicle_boxes_object_list)
+        size_filted_infra_boxes_object_list = Filter3dBoxes(occlusion_filted_infra_boxes_object_list).filter_according_to_size_percentile()
+        size_filted_vehicle_boxes_object_list = Filter3dBoxes(occlusion_filted_vehicle_boxes_object_list).filter_according_to_size_percentile()
         print('size filter:')
         print('infra_boxes: {} -> {} ', len(occlusion_filted_infra_boxes_object_list), len(size_filted_infra_boxes_object_list))
         print('vehicle_boxes: {} -> {} ', len(occlusion_filted_vehicle_boxes_object_list), len(size_filted_vehicle_boxes_object_list))
@@ -105,16 +112,10 @@ class Filter3dBoxes():
 
 
 if __name__ == "__main__":
-    cooperative_reader = CooperativeReader('config.yml')
+    cooperative_reader = CooperativeReader()
     converted_infra_pointcloud, vehicle_pointcloud = cooperative_reader.get_cooperative_infra_vehicle_pointcloud_vehicle_coordinate()
 
     filtered_infra_3dboxes, filered_vehicle_3dboxes = Filter3dBoxes().test_filtered_infra_vehicle_according_to_size_distance_occlusion_truncation()
-    
-    from process.corresponding.GenerateCorrespondingListTask import GenerateCorrespondingListTask
-    generateCorrespondingListTask = GenerateCorrespondingListTask('config.yml')
-    infra_vehicle_corresponding_list, IoU_list, _ = generateCorrespondingListTask.generate_corresponding_list(filtered_infra_3dboxes, filered_vehicle_3dboxes)
-    print(infra_vehicle_corresponding_list)
-    print(IoU_list)
 
     boxes_color_list = [[1, 0, 0], [0, 1, 0]]
     from BBoxVisualizer_open3d import BBoxVisualizer_open3d
