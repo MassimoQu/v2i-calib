@@ -5,24 +5,21 @@ sys.path.append('./reader')
 sys.path.append('./process')
 sys.path.append('./process/utils')
 sys.path.append('./process/corresponding')
-from CooperativeReader import CooperativeReader
-from extrinsic_utils import convert_T_to_6DOF, convert_6DOF_to_T, get_time, convert_Rt_to_T, implement_T_3dbox_object_list
-from GenerateCorrespondingListTask import GenerateCorrespondingListTask
+from extrinsic_utils import convert_T_to_6DOF, convert_6DOF_to_T, get_time, implement_T_3dbox_object_list
+from CorrespondingDetector import CorrespondingDetector
 
 # 尝试解构搜索范围，使其可以支持离散形式的搜索范围 
 
 class PSO_deconstructX():
 
-    def __init__(self, infra_box_object_list, vehicle_box_object_list, init_T_list = [np.eye(4)], n_dim=6, pop=40, max_iter=150, 
-                 discrete_search = False, lb=[-100, -100, -10, -math.pi, -math.pi, -math.pi], ub=[100, 100, 10, math.pi, math.pi, math.pi], 
+    def __init__(self, infra_box_object_list, vehicle_box_object_list, true_T_6DOF_format = None, init_T_list = None, n_dim=6, pop=40, max_iter=150, 
+                 lb=[-100, -100, -10, -math.pi, -math.pi, -math.pi], ub=[100, 100, 10, math.pi, math.pi, math.pi], 
                  w=(0.8, 0.8), c1=0.5, c2=0.5, constraint_eq=tuple(), constraint_ueq=tuple(), verbose=True):
         
         self.infra_box_object_list = infra_box_object_list
         self.vehicle_box_object_list = vehicle_box_object_list
 
-        self.cooperative_reader = CooperativeReader()
-        self.true_T_6DOF_format = convert_T_to_6DOF(convert_Rt_to_T(*self.cooperative_reader.get_cooperative_Rt_i2v()))
-        self.generate_corresponding_list_task = GenerateCorrespondingListTask('config.yml') #toedit
+        self.true_T_6DOF_format = true_T_6DOF_format
  
         self.w_max, self.w_min = w
         self.w = self.w_max  # inertia
@@ -36,19 +33,20 @@ class PSO_deconstructX():
 
         self.lb, self.ub = lb, ub
         assert self.n_dim == len(self.lb) == len(self.ub), 'dim == len(lb) == len(ub) is not True'
-        assert np.all(self.ub > self.lb), 'upper-bound must be greater than lower-bound'
+        assert np.all(self.ub >= self.lb), 'upper-bound must be greater than lower-bound'
 
         self.has_constraint = bool(constraint_ueq)
         self.constraint_ueq = constraint_ueq
         self.constraint_eq = constraint_eq
 
         self.X = np.random.uniform(low=self.lb, high=self.ub, size=(self.pop, self.n_dim))
-        init_num = max(init_T_list.shape[0], self.pop)
-        for i, init_T in enumerate(init_T_list):
-            if init_num <= 0:
-                break
-            init_num -= 1
-            self.X[i, :] = convert_T_to_6DOF(init_T)
+        if init_T_list is not None:
+            init_num = max(init_T_list.shape[0], self.pop)
+            for i, init_T in enumerate(init_T_list):
+                if init_num <= 0:
+                    break
+                init_num -= 1
+                self.X[i, :] = init_T
 
         v_high = [ub_i - lb_i for ub_i, lb_i in zip(self.ub, self.lb)]
         self.V = np.random.uniform(low=[-v for v in v_high], high=v_high, size=(self.pop, self.n_dim))  # speed of particles
@@ -57,7 +55,7 @@ class PSO_deconstructX():
         self.pbest_x = np.array(self.X.copy())  # personal best location of every particle in history
         self.pbest_y = np.zeros((pop, 1), dtype=np.float64)  # best image of every particle in history
         self.update_pbest()
-        self.gbest_x = self.pbest_x.mean(axis=0).reshape(1, -1)  # global best location for all particles
+        self.gbest_x = self.pbest_x.mean(axis=0)  # global best location for all particles
         self.gbest_y = 0  # global best y for all particles
         self.gbest_y_hist = []  # gbest_y of every iteration
         self.update_gbest()
@@ -101,7 +99,7 @@ class PSO_deconstructX():
         for idx, X in enumerate(self.X):
             T = convert_6DOF_to_T(X)
             converted_infra_box_object_list_copy = implement_T_3dbox_object_list(T, self.infra_box_object_list)
-            self.Y[idx][0] = self.generate_corresponding_list_task.cal_Y_score(converted_infra_box_object_list_copy, self.vehicle_box_object_list)
+            self.Y[idx][0] = CorrespondingDetector(converted_infra_box_object_list_copy, self.vehicle_box_object_list).get_Yscore()
         
 
     def update_pbest(self):
@@ -134,8 +132,8 @@ class PSO_deconstructX():
         self.record_value['V'].append(self.V)
         self.record_value['Y'].append(self.Y)
 
-    @get_time
-    def run(self, max_iter=None, precision=1e-1, N=20):
+    # @get_time
+    def run(self, max_iter=None, precision=1e-2, N=5):
         '''
         precision: None or float
             If precision is None, it will run the number of max_iter steps
@@ -144,6 +142,7 @@ class PSO_deconstructX():
         '''
         self.max_iter = max_iter or self.max_iter
         c = 0
+        last_gbest_y = self.gbest_y
         for iter_num in range(self.max_iter):
             self.update_w(iter_num)
             self.update_V()
@@ -152,17 +151,30 @@ class PSO_deconstructX():
             self.cal_y()
             self.update_pbest()
             self.update_gbest()
+
             if precision is not None:
-                tor_iter = np.amax(self.pbest_y) - np.amin(self.pbest_y)
+                tor_iter = self.gbest_y - last_gbest_y
+                last_gbest_y = self.gbest_y
                 if tor_iter < precision:
                     c = c + 1
-                    if c > N:
+                    if c >= N:
                         break
                 else:
                     c = 0
-            if self.verbose:
-                print('Iter: {}, Best fit: {} at {} , delta_true: {} '.format(iter_num, self.gbest_y, self.gbest_x, self.true_T_6DOF_format - self.gbest_x))
 
+            # if precision is not None:
+            #     tor_iter = np.amax(self.pbest_y) - np.amin(self.pbest_y)
+            #     if tor_iter < precision:
+            #         c = c + 1
+            #         if c > N:
+            #             break
+            #     else:
+            #         c = 0
+            if self.verbose:
+                print('Iter: {}, Best fit: {} at {} '.format(iter_num, self.gbest_y, self.gbest_x))
+                if self.true_T_6DOF_format is not None:
+                    print('delta_true: {}'.format(self.true_T_6DOF_format - self.gbest_x))
+                    
             self.gbest_y_hist.append(self.gbest_y)
         self.best_x, self.best_y = self.gbest_x, self.gbest_y
         return self.best_x, self.best_y

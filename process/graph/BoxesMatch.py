@@ -12,12 +12,12 @@ from CooperativeReader import CooperativeReader
 from CorrespondingDetector import CorrespondingDetector
 from Filter3dBoxes import Filter3dBoxes
 from scipy.optimize import linear_sum_assignment
-from extrinsic_utils import get_time_judge, implement_T_3dbox_object_list
+from extrinsic_utils import get_time_judge, implement_T_3dbox_object_list, get_extrinsic_from_two_3dbox_object
 import similarity_utils
 
 
 class BoxesMatch():
-    def __init__(self,infra_boxes_object_list, vehicle_boxes_object_list, T_infra2vehicle, verbose=False):
+    def __init__(self,infra_boxes_object_list, vehicle_boxes_object_list, T_infra2vehicle = None, verbose=False):
 
         self.infra_boxes_object_list, self.vehicle_boxes_object_list = infra_boxes_object_list, vehicle_boxes_object_list
         
@@ -54,6 +54,8 @@ class BoxesMatch():
 
         self.matches = self.get_matched_boxes_Hungarian_matching()
 
+    def get_matches(self):
+        return self.matches
 
     def output_intermediate_KP(self):
         output_dir = './intermediate_output'
@@ -134,6 +136,7 @@ def batching_test_boxes_match(verbose = False, k = 10):
     cnt = 0 
 
     valid_matches_list = []
+    non_matches_list = []
     error_matches_list = []
 
     for infra_file_name, vehicle_file_name, infra_boxes_object_list, vehicle_boxes_object_list, T_infra2vehicle in reader.generate_infra_vehicle_bboxes_object_list():
@@ -166,6 +169,19 @@ def batching_test_boxes_match(verbose = False, k = 10):
                 valid_matches['match_module_cost_time'] = end_time - start_time
                 valid_matches_list.append(valid_matches)
 
+            else:
+                non_matches = {}
+                non_matches['infra_file_name'] = infra_file_name
+                non_matches['vehicle_file_name'] = vehicle_file_name
+                non_matches['matches_cnt'] = matches_cnt
+                non_matches['available_matches_cnt'] = available_matches_cnt
+                non_matches['filtered_cnt'] = filtered_cnt
+                non_matches['infra_total_box_cnt'] = len(infra_boxes_object_list)
+                non_matches['vehicle_total_box_cnt'] = len(vehicle_boxes_object_list)
+                non_matches['match_module_cost_time'] = end_time - start_time
+                non_matches_list.append(non_matches)
+
+
         except Exception as e:
             if verbose:
                 print('Error: ', infra_file_name, vehicle_file_name)
@@ -181,27 +197,39 @@ def batching_test_boxes_match(verbose = False, k = 10):
         if verbose:
             print('---------------------------------')
 
-        if cnt % 50 == 0:
-            with open(f'intermediate_output/successful_matches_k{k}_cnt{cnt}.json', 'w') as f:
-                json.dump(valid_matches_list, f)
+        if cnt % 100 == 0:
+            if len(valid_matches_list):
+                with open(f'intermediate_output/successful_matches_k{k}_cnt{cnt}.json', 'w') as f:
+                    json.dump(valid_matches_list, f)
 
-            with open(f'intermediate_output/error_matches_k{k}_cnt{cnt}.json', 'w') as f:
-                json.dump(error_matches_list, f)
+            if len(non_matches_list):
+                with open(f'intermediate_output/non_matches_k{k}_cnt{cnt}.json', 'w') as f:
+                    json.dump(non_matches_list, f)
+
+            if len(error_matches_list):
+                with open(f'intermediate_output/error_matches_k{k}_cnt{cnt}.json', 'w') as f:
+                    json.dump(error_matches_list, f)
 
             valid_matches_list = []
+            non_matches_list = []
             error_matches_list = []
 
             print('----------------write to file---------------------')
 
-    if valid_matches_list or error_matches_list:
+    if len(valid_matches_list):
         with open(f'intermediate_output/successful_matches_k{k}_cnt{cnt}.json', 'w') as f:
             json.dump(valid_matches_list, f)
 
+    if len(non_matches_list):
+        with open(f'intermediate_output/non_matches_k{k}_cnt{cnt}.json', 'w') as f:
+            json.dump(non_matches_list, f)
+
+    if len(error_matches_list):
         with open(f'intermediate_output/error_matches_k{k}_cnt{cnt}.json', 'w') as f:
             json.dump(error_matches_list, f)
 
 
 
 if __name__ == "__main__":
-    specific_test_boxes_match('005298', '001374', k=32)
-    # batching_test_boxes_match(verbose=True, k=20)
+    # specific_test_boxes_match('004201', '020360', k=20)
+    batching_test_boxes_match(verbose=True, k=20)

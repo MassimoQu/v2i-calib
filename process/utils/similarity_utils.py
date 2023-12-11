@@ -67,8 +67,12 @@ def cal_similarity_length(infra_bbox_2_8_3, vehicle_bbox_2_8_3):
     if similarity_length == 0:
         if infra_length == 0:
             print('infra_length is 0')
+            # print('infra_bbox_2_8_3[0]:', infra_bbox_2_8_3[0])
+            # print('infra_bbox_2_8_3[1]:', infra_bbox_2_8_3[1])
         if vehicle_length == 0:
             print('vehicle_length is 0')
+            # print('vehicle_bbox_2_8_3[0]:', vehicle_bbox_2_8_3[0])
+            # print('vehicle_bbox_2_8_3[1]:', vehicle_bbox_2_8_3[1])
 
 
     return similarity_length
@@ -92,12 +96,16 @@ def get_KNN_points(box_object_list, index, k):
 def count_knn_similarity(edge1_point, edge1_start_point, edge2_point, edge2_start_point):
     # length_similar
     length_similar = cal_similarity_length((edge1_start_point.get_bbox3d_8_3(), edge1_point.get_bbox3d_8_3()), (edge2_start_point.get_bbox3d_8_3(), edge2_point.get_bbox3d_8_3()))
+    if length_similar < 0.95:
+        length_similar = 0
 
     # # size_similar
     # size_similar = cal_similarity_size(edge1_point.get_bbox3d_8_3(), edge2_point.get_bbox3d_8_3())
 
     # angle_similar
-    angle_similar = cal_similarity_angle((edge1_start_point.get_bbox3d_8_3(), edge1_point.get_bbox3d_8_3()), (edge2_start_point.get_bbox3d_8_3(), edge2_point.get_bbox3d_8_3()))
+    # angle_similar = cal_similarity_angle((edge1_start_point.get_bbox3d_8_3(), edge1_point.get_bbox3d_8_3()), (edge2_start_point.get_bbox3d_8_3(), edge2_point.get_bbox3d_8_3()))
+    # if angle_similar < 0.95:
+    #     angle_similar = 0
 
     # print('length_similar:', length_similar)
     # print('size_similar:', size_similar)
@@ -105,7 +113,7 @@ def count_knn_similarity(edge1_point, edge1_start_point, edge2_point, edge2_star
     # print(length_similar + size_similar + angle_similar)
     # print('-----------------------------------')
     
-    return length_similar + angle_similar #+ size_similar
+    return length_similar #+ angle_similar #+ size_similar
 
 
 def cal_similarity_knn(infra_object_list, infra_index, vehicle_object_list, vehicle_index, k = 0):
@@ -181,7 +189,3 @@ def test_similarity_length(infra_object_list, vehicle_object_list):
 
 def test_similarity_angle(infra_object_list, vehicle_object_list):
     pass
-
-
-
-

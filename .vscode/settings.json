@@ -6,6 +6,6 @@
         "./process",
         "./process/corresponding",
         "./process/graph",
-        "./process/seach"
+        "./process/search"
     ]
 }

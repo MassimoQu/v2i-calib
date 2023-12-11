@@ -43,6 +43,6 @@ class BBoxVisualizer():
 
 
 if __name__ == "__main__":
-    vehicle_reader = VehicleReader('015904')
+    vehicle_reader = VehicleReader('004219')
     vehicle_object_list = vehicle_reader.get_vehicle_boxes_object_list()
     BBoxVisualizer().plot_boxes_object_list_image(vehicle_object_list, vehicle_reader.get_vehicle_image())

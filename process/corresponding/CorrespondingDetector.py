@@ -27,7 +27,7 @@ class CorrespondingDetector():
                         self.corresponding_IoU_dict[(i, j)] = box3d_IoU_score
 
         if len(self.corresponding_IoU_dict) != 0:
-            self.Y = np.mean(list(self.corresponding_IoU_dict.values()))
+            self.Y = np.sum(list(self.corresponding_IoU_dict.values()))
 
     def get_matched_num(self):
         return len(self.corresponding_IoU_dict)
@@ -36,7 +36,5 @@ class CorrespondingDetector():
         return min(len(self.infra_bboxes_object_list), len(self.vehicle_bboxes_object_list))
     
     def get_Yscore(self):
-        return self.Y
+        return self.Y / self.get_total_num()
 
-    def is_aligned_position(self):
-        return 

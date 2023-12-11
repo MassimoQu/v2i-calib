@@ -121,7 +121,7 @@ if '__main__' == __name__:
 
     # test_alpha_property()
 
-    vehicle_reader = VehicleReader('015904')
+    vehicle_reader = VehicleReader('004219')
     BBoxVisualizer_open3d().plot_boxes3d_lists_pointcloud_lists([vehicle_reader.get_vehicle_boxes_object_list()], [vehicle_reader.get_vehicle_pointcloud()], [(1, 0, 0)])
 
     

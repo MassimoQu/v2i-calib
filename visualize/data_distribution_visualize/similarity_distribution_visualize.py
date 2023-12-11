@@ -3,7 +3,10 @@ import numpy as np
 import sys
 sys.path.append('./reader')
 sys.path.append('./process/utils')
+sys.path.append('./process/corresponding')
+from CooperativeBatchingReader import CooperativeBatchingReader
 from CooperativeReader import CooperativeReader
+from CorrespondingDetector import CorrespondingDetector
 from Filter3dBoxes import Filter3dBoxes
 from similarity_utils import cal_similarity_size, cal_similarity_angle, cal_similarity_length
 from graph_utils import get_full_connected_edge
@@ -98,15 +101,139 @@ def visualize_edge_property_similarity_between_category(boxes_object_list1, boxe
     plt.show()
     
 
+def test_length_angle_similarity_within_coupled_scene(infra_file_name, vehicle_file_name):
+    infra_boxes_object_list, vehicle_boxes_object_list = CooperativeReader(infra_file_name, vehicle_file_name).get_cooperative_infra_vehicle_boxes_object_lists_vehicle_coordinate()
+    matches = CorrespondingDetector(infra_boxes_object_list, vehicle_boxes_object_list).corresponding_IoU_dict.keys()
     
+    infra_boxes_object_list = []
+    vehicle_boxes_object_list = []
+    for match in matches:
+        infra_boxes_object_list.append(infra_boxes_object_list[match[0]])
+        vehicle_boxes_object_list.append(vehicle_boxes_object_list[match[1]])
+
+    similarity_list = {}
+    similarity_list['length'] = []
+    similarity_list['angle'] = []
+
+    for i in range(len(infra_boxes_object_list)):
+        for j in range(len(infra_boxes_object_list)):
+            if i != j:                 
+                length_similarity = cal_similarity_length((infra_boxes_object_list[i].get_bbox3d_8_3(), infra_boxes_object_list[j].get_bbox3d_8_3()), (vehicle_boxes_object_list[i].get_bbox3d_8_3(), vehicle_boxes_object_list[j].get_bbox3d_8_3()))
+                angle_similarity = cal_similarity_angle((infra_boxes_object_list[i].get_bbox3d_8_3(), infra_boxes_object_list[j].get_bbox3d_8_3()), (vehicle_boxes_object_list[i].get_bbox3d_8_3(), vehicle_boxes_object_list[j].get_bbox3d_8_3()))
+
+                similarity_list['length'].append(length_similarity)
+                similarity_list['angle'].append(angle_similarity)
+
+    plt.figure(figsize=(10, 10))
+    plt.boxplot([similarity_list['length'], similarity_list['angle']], labels=['length(' + str(len(similarity_list['length'])), 'angle(' + str(len(similarity_list['angle']))])
+    plt.title('Length and Angle Distribution')
+    plt.ylabel(f'Similarity of {infra_file_name} and {vehicle_file_name}')
+    plt.xticks(rotation=45, ha='right')
+    plt.grid(True)
+    plt.show()
+    
+
+def test_length_angle_similarity_within_wide_scene(start_index, end_index):
+    reader = CooperativeBatchingReader()
+
+    similarity_list = {}
+    similarity_list['length'] = []
+    similarity_list['angle'] = []
+
+    end_index -= start_index
+
+    for infra_file_name, vehicle_file_name in zip(*reader.get_infra_vehicle_file_names()):
+        if start_index > 0:
+            start_index -= 1
+            continue
+        elif end_index > 0:
+            end_index -= 1
+        else :
+            break
+
+        infra_boxes_object_list, vehicle_boxes_object_list = CooperativeReader(infra_file_name, vehicle_file_name).get_cooperative_infra_vehicle_boxes_object_lists_vehicle_coordinate()
+        matches = CorrespondingDetector(infra_boxes_object_list, vehicle_boxes_object_list).corresponding_IoU_dict.keys()
+        
+        infra_boxes_object_list = []
+        vehicle_boxes_object_list = []
+        for match in matches:
+            infra_boxes_object_list.append(infra_boxes_object_list[match[0]])
+            vehicle_boxes_object_list.append(vehicle_boxes_object_list[match[1]])
+
+        for i in range(len(infra_boxes_object_list)):
+            for j in range(len(infra_boxes_object_list)):
+                if vehicle_boxes_object_list[i] == vehicle_boxes_object_list[j] or infra_boxes_object_list[i] == infra_boxes_object_list[j]:
+                    continue
+                length_similarity = cal_similarity_length((infra_boxes_object_list[i].get_bbox3d_8_3(), infra_boxes_object_list[j].get_bbox3d_8_3()), (vehicle_boxes_object_list[i].get_bbox3d_8_3(), vehicle_boxes_object_list[j].get_bbox3d_8_3()))
+                angle_similarity = cal_similarity_angle((infra_boxes_object_list[i].get_bbox3d_8_3(), infra_boxes_object_list[j].get_bbox3d_8_3()), (vehicle_boxes_object_list[i].get_bbox3d_8_3(), vehicle_boxes_object_list[j].get_bbox3d_8_3()))
+
+                similarity_list['length'].append(length_similarity)
+                similarity_list['angle'].append(angle_similarity)
+
+    plt.figure(figsize=(10, 10))
+    plt.boxplot([similarity_list['length'], similarity_list['angle']], labels=['length(' + str(len(similarity_list['length'])), 'angle(' + str(len(similarity_list['angle']))])
+    plt.title('Length and Angle Distribution')
+    plt.ylabel(f'Similarity of scene No.{start_index} to No.{end_index}')
+    plt.xticks(rotation=45, ha='right')
+    plt.grid(True)
+    plt.show()
+
+
+def test_length_angle_similarity_within_wide_scene(start_index, end_index):
+    reader = CooperativeBatchingReader()
+
+    similarity_list = {}
+    similarity_list['length'] = []
+    similarity_list['angle'] = []
+
+    end_index -= start_index
+
+    for infra_file_name, vehicle_file_name in zip(*reader.get_infra_vehicle_file_names()):
+        if start_index > 0:
+            start_index -= 1
+            continue
+        elif end_index > 0:
+            end_index -= 1
+        else :
+            break
+
+        infra_boxes_object_list, vehicle_boxes_object_list = CooperativeReader(infra_file_name, vehicle_file_name).get_cooperative_infra_vehicle_boxes_object_list()
+        
+        for ii in range(len(infra_boxes_object_list)):
+            for ij in range(len(infra_boxes_object_list)):
+                if ii == ij:
+                    continue
+                for vi in range(len(vehicle_boxes_object_list)):
+                    for vj in range(len(vehicle_boxes_object_list)):
+                        if vi == vj:
+                            continue
+                        length_similarity = cal_similarity_length((infra_boxes_object_list[ii].get_bbox3d_8_3(), infra_boxes_object_list[ij].get_bbox3d_8_3()), (vehicle_boxes_object_list[vi].get_bbox3d_8_3(), vehicle_boxes_object_list[vj].get_bbox3d_8_3()))
+                        angle_similarity = cal_similarity_angle((infra_boxes_object_list[ii].get_bbox3d_8_3(), infra_boxes_object_list[ij].get_bbox3d_8_3()), (vehicle_boxes_object_list[vi].get_bbox3d_8_3(), vehicle_boxes_object_list[vj].get_bbox3d_8_3()))
+
+                        similarity_list['length'].append(length_similarity)
+                        similarity_list['angle'].append(angle_similarity)
+                
+    plt.figure(figsize=(10, 10))
+    plt.boxplot([similarity_list['length'], similarity_list['angle']], labels=['length(' + str(len(similarity_list['length'])), 'angle(' + str(len(similarity_list['angle']))])
+    plt.title('Length and Angle Distribution')
+    plt.ylabel(f'Similarity of scene No.{start_index} to No.{end_index}')
+    plt.xticks(rotation=45, ha='right')
+    plt.grid(True)
+    plt.show()
+
+
 
 if __name__ == '__main__':
-    infra_boxes_object_list, vehicle_boxes_object_list = CooperativeReader('003920', '020092').get_cooperative_infra_vehicle_boxes_object_list()
+    # infra_boxes_object_list, vehicle_boxes_object_list = CooperativeReader('003920', '020092').get_cooperative_infra_vehicle_boxes_object_list()
     
-    infra_boxes_object_list = Filter3dBoxes(infra_boxes_object_list).filter_according_to_size_topK(k = 20)
-    vehicle_boxes_object_list = Filter3dBoxes(vehicle_boxes_object_list).filter_according_to_size_topK(k = 20)
+    # infra_boxes_object_list = Filter3dBoxes(infra_boxes_object_list).filter_according_to_size_topK(k = 20)
+    # vehicle_boxes_object_list = Filter3dBoxes(vehicle_boxes_object_list).filter_according_to_size_topK(k = 20)
     
-    # visualize_edge_property_similarity_between_category(infra_boxes_object_list, vehicle_boxes_object_list, edge_property_calculator=cal_similarity_angle)
-    # visualize_edge_property_similarity_between_category(infra_boxes_object_list, vehicle_boxes_object_list, edge_property_calculator=cal_similarity_length)
+    # # visualize_edge_property_similarity_between_category(infra_boxes_object_list, vehicle_boxes_object_list, edge_property_calculator=cal_similarity_angle)
+    # # visualize_edge_property_similarity_between_category(infra_boxes_object_list, vehicle_boxes_object_list, edge_property_calculator=cal_similarity_length)
 
-    visualize_size_similarity_between_same_category(infra_boxes_object_list)
+    # visualize_size_similarity_between_same_category(infra_boxes_object_list)
+
+    # test_length_angle_similarity_within_coupled_scene('015630', '006742')
+
+    test_length_angle_similarity_within_wide_scene(0, 1)

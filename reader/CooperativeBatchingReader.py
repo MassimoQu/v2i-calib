@@ -4,15 +4,17 @@ from CooperativeReader import CooperativeReader
 
 
 class CooperativeBatchingReader:
-    def __init__(self, yaml_filename):
+    def __init__(self, yaml_filename = 'config.yml'):
         para_yaml = read_yaml(yaml_filename)
         self.data_folder = para_yaml['data_folder']
-        path_data_info = osp.join(self.data_folder, 'cooperative-vehicle-infrastructure', 'cooperative', 'data_info.json')
+        self.path_data_info = osp.join(self.data_folder, 'cooperative-vehicle-infrastructure', 'cooperative', 'data_info.json')
         
-        self.infra_file_names, self.vehicle_file_names = self.get_infra_vehicle_file_names(path_data_info)
+        self.infra_file_names, self.vehicle_file_names = self.get_infra_vehicle_file_names(self.path_data_info)
 
     
-    def get_infra_vehicle_file_names(self, path_data_info):
+    def get_infra_vehicle_file_names(self, path_data_info = None):
+        if path_data_info is None:
+            path_data_info = self.path_data_info
         data_infos = read_json(path_data_info)
         infra_file_names = []
         vehicle_file_names = []

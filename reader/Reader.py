@@ -29,6 +29,8 @@ class Reader():
             float(label["3d_dimensions"]["w"]),
             float(label["3d_dimensions"]["h"]),
         ]
+        if all(abs(elemnt) < 1e-6 for elemnt in obj_size):
+            return None
         yaw_lidar = float(label["rotation"])
         center_lidar = [
             float(label["3d_location"]["x"]),
@@ -44,7 +46,10 @@ class Reader():
         labels = read_json(path_label) 
         bbox3d_list = []
         for label in labels:
-            bbox3d_list.append(BBox3d(label["type"].lower(), self.get_3dboxes_8_3(label), self.get_2dboxes_4(label), int(label["occluded_state"]), float(label["truncated_state"]), float(label["alpha"])) )
+            box_8_3 = self.get_3dboxes_8_3(label)
+            if box_8_3 is None:
+                continue
+            bbox3d_list.append(BBox3d(label["type"].lower(), box_8_3, self.get_2dboxes_4(label), int(label["occluded_state"]), float(label["truncated_state"]), float(label["alpha"])) )
         return bbox3d_list
 
     def get_pointcloud(self, path_pointcloud):
