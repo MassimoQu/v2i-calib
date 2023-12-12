@@ -42,13 +42,13 @@ class BoxesMatch():
                     # 检测框大小
                     # similarity_size = similarity_utils.cal_similarity_size(infra_bbox_object.get_bbox3d_8_3(), vehicle_bbox_object.get_bbox3d_8_3())
                     # 邻近k个点的相似度
-                    similarity_knn = similarity_utils.cal_similarity_knn(self.infra_boxes_object_list, i, self.vehicle_boxes_object_list, j)
+                    # similarity_knn = similarity_utils.cal_similarity_knn(self.infra_boxes_object_list, i, self.vehicle_boxes_object_list, j)
                     # self.KP[i, j] = int(similarity_size * 10) + int(similarity_knn)
-                    self.KP[i, j] =  int(similarity_knn)
+                    # self.KP[i, j] =  int(similarity_knn)
 
-                    # if self.KP[i, j] > 0:
-                    #     print('j ==', j)
-                    #     print(vehicle_bbox_object.get_bbox_type())
+                    T = get_extrinsic_from_two_3dbox_object(infra_bbox_object, vehicle_bbox_object)
+                    converted_infra_boxes_object_list = implement_T_3dbox_object_list(T, infra_boxes_object_list)
+                    self.KP[i, j] = int(CorrespondingDetector(converted_infra_boxes_object_list, vehicle_boxes_object_list).get_Yscore() * 100)
 
         cal_KP()
 
@@ -231,5 +231,5 @@ def batching_test_boxes_match(verbose = False, k = 10):
 
 
 if __name__ == "__main__":
-    # specific_test_boxes_match('004201', '020360', k=20)
-    batching_test_boxes_match(verbose=True, k=20)
+    # specific_test_boxes_match(k=20)
+    batching_test_boxes_match(verbose=True, k=15)

@@ -142,7 +142,7 @@ def test_extrisic_from_two_box_object_list(verbose = False, filter_num = 15):
             print(f'cost time: {end_time - start_time}')
             print('---------------------------------')
 
-        if cnt % 50 == 0:
+        if cnt % 100 == 0:
             if len(no_common_box_list):
                 with open(f'intermediate_output/no_common_view_k{filter_num}_cnt{cnt}.json', 'w') as f:
                     json.dump(no_common_box_list, f)

@@ -56,7 +56,7 @@ def analyze_bad_test():
 
 
 def count_test_result():
-    total_cnt = 200
+    total_cnt = 100
     k = 10
     # folder_name = r'intermediate_output/extrinsic_test/'
     # file_name_list = ['invalid_extrinsic_k15_cnt', 'no_common_view_k15_cnt', 'valid_extrinsic_k15_cnt', 'valid_bad_extrinsic_k15_cnt']
@@ -76,7 +76,7 @@ def count_test_result():
     TE_list = []
     time_cost_list = []
 
-    for cnt in range(50, total_cnt + 1, 50):
+    for cnt in range(100, total_cnt + 1, 100):
         for file_name in file_name_list:
             with open(folder_name + file_name + str(cnt) + '.json', 'r') as f:
                 example_list = json.load(f)
