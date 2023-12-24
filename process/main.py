@@ -25,7 +25,7 @@ def cal_extrinsic_from_two_box_object_list(box_object_list1, box_object_list2, f
     return pso.get_best_T_6DOF(), matches
 
 
-def test_extrisic_from_two_box_object_list(verbose = False, filter_num = 15):
+def batching_test_extrisic_from_two_box_object_list(verbose = False, filter_num = 15):
     reader = CooperativeBatchingReader('config.yml')
     cnt = 0 
 
@@ -189,4 +189,4 @@ def test_extrisic_from_two_box_object_list(verbose = False, filter_num = 15):
 
 
 if __name__ == '__main__':
-    test_extrisic_from_two_box_object_list(verbose = False, filter_num = 10)
+    batching_test_extrisic_from_two_box_object_list(verbose = False, filter_num = 15)

@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import sys
 sys.path.append('./reader')
 sys.path.append('./process/search')
+sys.path.append('./process/graph')
 sys.path.append('./process/utils')
 sys.path.append('./process/corresponding')
 from CooperativeReader import CooperativeReader
@@ -12,8 +13,8 @@ from Filter3dBoxes import Filter3dBoxes
 from PSO_deconstructX import PSO_deconstructX
 from CorrespondingDetector import CorrespondingDetector
 from read_utils import read_yaml
-from extrinsic_utils import get_extrinsic_from_two_3dbox_object, convert_T_to_6DOF, implement_T_3dbox_object_list
-
+from extrinsic_utils import get_extrinsic_from_two_3dbox_object, convert_T_to_6DOF, implement_T_3dbox_object_list, convert_6DOF_to_T
+from BoxesMatch import BoxesMatch
 
 
 
@@ -46,8 +47,17 @@ class PSO_Executor():
         self.cal_pso_bound()
         
         if verbose:
+            print('true_T_6DOF: ', self.true_T_6DOF_format)
             print('len(pso_init_X): ', len(self.pso_init_X))
-            print('pso_init_X: ', self.pso_init_X)
+            for pso_init_x in self.pso_init_X:
+                print('- pso_init_x: ', pso_init_x)
+                corresponding_detector = CorrespondingDetector(implement_T_3dbox_object_list(convert_6DOF_to_T(pso_init_x), self.infra_boxes_object_list), self.vehicle_boxes_object_list)
+                corresponding_IoU_dict = corresponding_detector.corresponding_IoU_dict
+                y_score = corresponding_detector.get_Yscore()
+                print('- corresponding_IoU_dict: ', corresponding_IoU_dict)
+                print('- y_score: ', y_score)
+                print('--------')
+
             print('pso_lower_bound: ', self.pso_lower_bound)
             print('pso_upper_bound: ', self.pso_upper_bound)
 
@@ -104,11 +114,19 @@ class PSO_Executor():
         return self.pso.best_x
 
 
+
+
 if __name__ == "__main__":
     
     # cooperative_reader = CooperativeReader('008663', '002505')
-    cooperative_reader = CooperativeReader()
+    cooperative_reader = CooperativeReader('019839', '008819')
     infra_boxes_object_list, vehicle_boxes_object_list = cooperative_reader.get_cooperative_infra_vehicle_boxes_object_list()
     true_T_6DOF_format = convert_T_to_6DOF(cooperative_reader.get_cooperative_T_i2v())
+  
+    infra_boxes_object_list = Filter3dBoxes(infra_boxes_object_list).filter_according_to_size_topK(10)
+    vehicle_boxes_object_list = Filter3dBoxes(vehicle_boxes_object_list).filter_according_to_size_topK(10)
 
-    pso_task = PSO_Executor(infra_boxes_object_list, vehicle_boxes_object_list, true_T_6DOF_format, filter_num = 15, verbose = True, visualize = True)
+    boxes_match = BoxesMatch(infra_boxes_object_list, vehicle_boxes_object_list, true_T_6DOF_format, verbose=True)
+    matches = boxes_match.get_matches()
+    pso_task = PSO_Executor(infra_boxes_object_list, vehicle_boxes_object_list, true_T_6DOF_format, matches, verbose=True, visualize=True)
+    

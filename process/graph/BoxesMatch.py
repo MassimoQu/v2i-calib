@@ -231,5 +231,5 @@ def batching_test_boxes_match(verbose = False, k = 10):
 
 
 if __name__ == "__main__":
-    # specific_test_boxes_match(k=20)
-    batching_test_boxes_match(verbose=True, k=15)
+    specific_test_boxes_match('006782', '000102', k=10)
+    # batching_test_boxes_match(verbose=True, k=15)

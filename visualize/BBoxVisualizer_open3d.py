@@ -5,9 +5,9 @@ sys.path.append('./reader')
 sys.path.append('./process/utils')
 from CooperativeReader import CooperativeReader
 from CooperativeBatchingReader import CooperativeBatchingReader
-from VehicleReader import VehicleReader
 from Filter3dBoxes import Filter3dBoxes
 from extrinsic_utils import implement_T_points_n_3, implement_T_3dbox_object_list
+from extrinsic_utils import convert_6DOF_to_T
 
 
 class BBoxVisualizer_open3d():
@@ -49,7 +49,7 @@ class BBoxVisualizer_open3d():
         vis = o3d.visualization.Visualizer()
         vis.create_window()
         # 绘制点云
-        pointcloud_colors = [(0, 1, 0), (1, 0, 0)]
+        pointcloud_colors = [(1, 0, 0), (0, 1, 0)]
 
         for i, pointcloud in enumerate(pointclouds_list):
             pcd = o3d.geometry.PointCloud()
@@ -121,7 +121,21 @@ if '__main__' == __name__:
 
     # test_alpha_property()
 
-    vehicle_reader = VehicleReader('004219')
-    BBoxVisualizer_open3d().plot_boxes3d_lists_pointcloud_lists([vehicle_reader.get_vehicle_boxes_object_list()], [vehicle_reader.get_vehicle_pointcloud()], [(1, 0, 0)])
+    cooperative_reader = CooperativeReader('019839', '008819')
+    infra_boxes_object_list, vehicle_boxes_object_list = cooperative_reader.get_cooperative_infra_vehicle_boxes_object_list()
+    infra_pointcloud, vehicle_pointcloud = cooperative_reader.get_cooperative_infra_vehicle_pointcloud()
+
+    k = 10
+    filtered_infra_boxes_object_list = Filter3dBoxes(infra_boxes_object_list).filter_according_to_size_topK(k)
+    filtered_vehicle_boxes_object_list = Filter3dBoxes(vehicle_boxes_object_list).filter_according_to_size_topK(k)
+
+    # [ 3.82784993e+01  6.93067943e+01  7.40810464e-01  5.46986279e-16  0.00000000e+00 -8.59894273e+01]
+    T_6DOF = np.array([ 3.82784993e+01,  6.93067943e+01,  7.40810464e-01,  5.46986279e-16,  0.00000000e+00, -8.59894273e+01])
+    T = convert_6DOF_to_T(T_6DOF)
+    # T = cooperative_reader.get_cooperative_T_i2v()
+    converted_infra_boxes_object_list = implement_T_3dbox_object_list(T, filtered_infra_boxes_object_list)
+    converted_infra_pointcloud = implement_T_points_n_3(T, infra_pointcloud)
+
+    BBoxVisualizer_open3d().plot_boxes3d_lists_pointcloud_lists([converted_infra_boxes_object_list, filtered_vehicle_boxes_object_list], [converted_infra_pointcloud, vehicle_pointcloud], [(1, 0, 0), (0, 1, 0)])
 
     

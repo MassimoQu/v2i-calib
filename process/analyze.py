@@ -1,3 +1,4 @@
+import numpy as np
 import matplotlib.pyplot as plt
 import json
 import sys
@@ -14,7 +15,7 @@ from Filter3dBoxes import Filter3dBoxes
 from PSO_Executor import PSO_Executor
 from extrinsic_utils import implement_T_3dbox_object_list, get_RE_TE_by_compare_T_6DOF_result_true, convert_T_to_6DOF,convert_6DOF_to_T
 from BBoxVisualizer_open3d import BBoxVisualizer_open3d
-
+ 
 def analyze_bad_test():
 
     with open(r'intermediate_output/extrinsic_test/valid_bad_extrinsic_k15_cnt50.json', 'r') as f:
@@ -56,8 +57,8 @@ def analyze_bad_test():
 
 
 def count_test_result():
-    total_cnt = 100
-    k = 10
+    total_cnt = 600
+    k = 15
     # folder_name = r'intermediate_output/extrinsic_test/'
     # file_name_list = ['invalid_extrinsic_k15_cnt', 'no_common_view_k15_cnt', 'valid_extrinsic_k15_cnt', 'valid_bad_extrinsic_k15_cnt']
 
@@ -72,9 +73,17 @@ def count_test_result():
     RE_mean = 0
     TE_mean = 0
     time_cost_mean = 0
+    delta_T_6DOF_mean = []
     RE_list = []
     TE_list = []
     time_cost_list = []
+    delta_T_6DOF_list = []
+    x_list = []
+    y_list = []
+    z_list = []
+    roll_list = []
+    pitch_list = []
+    yaw_list = []
 
     for cnt in range(100, total_cnt + 1, 100):
         for file_name in file_name_list:
@@ -86,12 +95,22 @@ def count_test_result():
                 RE_list_part = [example['RE'] for example in example_list]
                 TE_list_part = [example['TE'] for example in example_list]
                 time_cost_list_part = [example['cost_time'] for example in example_list]
+                delta_T_6DOF_list_part = []
+                for example in example_list:
+                    T_6DOF = []
+                    for alpha in example['delta_T_6DOF']:
+                        if alpha > 180:
+                            alpha = alpha - 360                         
+                        elif alpha < -180: 
+                            alpha = alpha + 360
+                        T_6DOF.append(alpha)
+
+                    delta_T_6DOF_list_part.append(T_6DOF)
                 RE_list += RE_list_part
                 TE_list += TE_list_part
                 time_cost_list += time_cost_list_part
-                RE_mean = sum(RE_list) / len(RE_list)
-                TE_mean = sum(TE_list) / len(TE_list)
-                time_cost_mean = sum(time_cost_list) / len(time_cost_list)
+                delta_T_6DOF_list += delta_T_6DOF_list_part
+                
 
             elif file_name == file_name_list[1]:
                 valid_bad_cnt += len(example_list)
@@ -100,12 +119,24 @@ def count_test_result():
             elif file_name == file_name_list[3]:
                 no_common_cnt += len(example_list)
     
+    RE_mean = sum(RE_list) / len(RE_list)
+    TE_mean = sum(TE_list) / len(TE_list)
+    time_cost_mean = sum(time_cost_list) / len(time_cost_list)
+    delta_T_6DOF_mean = np.mean(delta_T_6DOF_list, axis=0)
+
     plt.figure()
     plt.boxplot([RE_list, TE_list], labels=['RE(' + str(len(RE_list)), 'TE' + str(len(TE_list)) + ')'])
     plt.title('RE & TE of valid extrinsic')
     plt.xticks(rotation=45, ha='right')
     plt.grid(True)
     # plt.show()
+
+    # plt.figure()
+    # plt.boxplot(delta_T_6DOF_list, labels=['x(' + str(len(delta_T_6DOF_list)) + ')', 'y', 'z', 'roll', 'pitch', 'yaw'])
+    # plt.title('delta_T_6DOF of valid extrinsic')
+    # plt.xticks(rotation=45, ha='right')
+    # plt.grid(True)
+
 
     plt.figure()
     plt.boxplot(time_cost_list, labels=['time_cost(' + str(len(time_cost_list)) + ')'])
@@ -118,7 +149,7 @@ def count_test_result():
     print(f'reacall: {valid_cnt / (valid_bad_cnt + valid_cnt)}, valid_cnt / total_cnt: {valid_cnt / total_cnt}, valid_bad_cnt / total_cnt: {valid_bad_cnt / total_cnt},')
     print(f' invalid_cnt / total_cnt: {invalid_cnt / total_cnt}, no_common_cnt / total_cnt: {no_common_cnt / total_cnt}')
     print(f'RE_mean: {RE_mean}, TE_mean: {TE_mean}, time_cost_mean: {time_cost_mean}')
-
+    print(f'delta_T_6DOF_mean(x,y,z,roll,yaw,pitch): {delta_T_6DOF_mean}')
 
 
 
