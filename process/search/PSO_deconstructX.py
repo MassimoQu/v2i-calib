@@ -70,7 +70,7 @@ class PSO_deconstructX():
         self.best_x, self.best_y = self.gbest_x, self.gbest_y  # history reasons, will be deprecated
         
 
-
+    
 
 
     def check_constraint(self, x):

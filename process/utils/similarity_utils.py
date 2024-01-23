@@ -6,6 +6,7 @@ sys.path.append('./process/utils')
 sys.path.append('./visualize')
 from IoU_utils import cal_3dIoU
 from bbox_utils import get_lwh_from_bbox3d_8_3, get_bbox3d_8_3_from_xyz_lwh, get_vector_between_bbox3d_8_3, get_length_between_bbox3d_8_3
+from appearance_similarity import cal_appearance_similarity
 from BBoxVisualizer_open3d import BBoxVisualizer_open3d as BBoxVisualizer
 
 

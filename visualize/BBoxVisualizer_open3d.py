@@ -49,7 +49,7 @@ class BBoxVisualizer_open3d():
         vis = o3d.visualization.Visualizer()
         vis.create_window()
         # 绘制点云
-        pointcloud_colors = [(1, 0, 0), (0, 1, 0)]
+        pointcloud_colors = [(0.25, 0, 0), (0, 0.25, 0)]
 
         for i, pointcloud in enumerate(pointclouds_list):
             pcd = o3d.geometry.PointCloud()
@@ -121,21 +121,21 @@ if '__main__' == __name__:
 
     # test_alpha_property()
 
-    cooperative_reader = CooperativeReader('019839', '008819')
+    cooperative_reader = CooperativeReader('009229', '005007')
     infra_boxes_object_list, vehicle_boxes_object_list = cooperative_reader.get_cooperative_infra_vehicle_boxes_object_list()
     infra_pointcloud, vehicle_pointcloud = cooperative_reader.get_cooperative_infra_vehicle_pointcloud()
 
-    k = 10
+    k = 15
     filtered_infra_boxes_object_list = Filter3dBoxes(infra_boxes_object_list).filter_according_to_size_topK(k)
     filtered_vehicle_boxes_object_list = Filter3dBoxes(vehicle_boxes_object_list).filter_according_to_size_topK(k)
 
-    # [ 3.82784993e+01  6.93067943e+01  7.40810464e-01  5.46986279e-16  0.00000000e+00 -8.59894273e+01]
-    T_6DOF = np.array([ 3.82784993e+01,  6.93067943e+01,  7.40810464e-01,  5.46986279e-16,  0.00000000e+00, -8.59894273e+01])
+    # [-4.48010435e+01 -3.54835729e+01 -1.94283870e-01 -2.35885590e-14  2.54444375e-14  4.05479517e+01]
+    T_6DOF = np.array([-4.48010435e+01, -3.54835729e+01, -1.94283870e-01, -2.35885590e-14,  2.54444375e-14,  4.05479517e+01])
     T = convert_6DOF_to_T(T_6DOF)
     # T = cooperative_reader.get_cooperative_T_i2v()
     converted_infra_boxes_object_list = implement_T_3dbox_object_list(T, filtered_infra_boxes_object_list)
     converted_infra_pointcloud = implement_T_points_n_3(T, infra_pointcloud)
 
-    BBoxVisualizer_open3d().plot_boxes3d_lists_pointcloud_lists([converted_infra_boxes_object_list, filtered_vehicle_boxes_object_list], [converted_infra_pointcloud, vehicle_pointcloud], [(1, 0, 0), (0, 1, 0)])
+    BBoxVisualizer_open3d().plot_boxes3d_lists_pointcloud_lists([converted_infra_boxes_object_list, filtered_vehicle_boxes_object_list], [infra_pointcloud, vehicle_pointcloud], [(1, 0, 0), (0, 1, 0)])
 
     

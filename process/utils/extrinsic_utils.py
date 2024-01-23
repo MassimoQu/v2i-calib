@@ -147,13 +147,15 @@ def get_extrinsic_from_two_3dbox_object(box_object_1, box_object_2):
     return get_extrinsic_from_two_points(points1, points2)
     
 def get_extrinsic_from_two_mixed_3dbox_object_list(box_object_list_1, box_object_list_2):
+    if len(box_object_list_1) == 0 or len(box_object_list_2) == 0:
+        return np.eye(4)
     points1 = np.concatenate([box_object.get_bbox3d_8_3() for box_object in box_object_list_1], axis=0)
     points2 = np.concatenate([box_object.get_bbox3d_8_3() for box_object in box_object_list_2], axis=0)
     return get_extrinsic_from_two_points(points1, points2)
     
 # HPCR-VI (2023IV)
 def get_RE_TE_by_compare_T_6DOF_result_true(T1_6DOF, T2_6DOF):
-    # RE : rad
+    # RE : °
     # TE : m
     R1, t1 = convert_T_to_Rt(convert_6DOF_to_T(T1_6DOF))
     R2, t2 = convert_T_to_Rt(convert_6DOF_to_T(T2_6DOF))

@@ -30,6 +30,9 @@ class CooperativeReader():
     def get_cooperative_infra_vehicle_pointcloud(self):
         return self.infra_reader.get_infra_pointcloud(), self.vehicle_reader.get_vehicle_pointcloud()
     
+    def get_cooperative_infra_vehicle_image(self):
+        return self.infra_reader.get_infra_image(), self.vehicle_reader.get_vehicle_image()
+    
     def get_cooperative_infra_vehicle_pointcloud_vehicle_coordinate(self):
         infra_pointcloud, vehicle_pointcloud = self.get_cooperative_infra_vehicle_pointcloud()
         R_infra_lidar_2_vehicle_lidar, t_infra_lidar_2_vehicle_lidar = self.get_cooperative_Rt_i2v()

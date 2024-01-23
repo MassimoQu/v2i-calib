@@ -4,7 +4,7 @@ sys.path.append('./process/utils')
 
 import numpy as np
 from IoU_utils import cal_3dIoU
-
+from bbox_utils import get_volume_from_bbox3d_8_3
 
 class CorrespondingDetector():
     def __init__(self, infra_bboxes_object_list, vehicle_bboxes_object_list):
@@ -24,7 +24,12 @@ class CorrespondingDetector():
                 if infra_bbox_object.get_bbox_type() == vehicle_bbox_object.get_bbox_type():
                     box3d_IoU_score = cal_3dIoU(infra_bbox_object.get_bbox3d_8_3(), vehicle_bbox_object.get_bbox3d_8_3())
                     if box3d_IoU_score > 0:
+                        infra_volume = get_volume_from_bbox3d_8_3(infra_bbox_object.get_bbox3d_8_3())
+                        vehicle_volume = get_volume_from_bbox3d_8_3(vehicle_bbox_object.get_bbox3d_8_3())
+                        volume = (infra_volume + vehicle_volume) / 2
                         self.corresponding_IoU_dict[(i, j)] = box3d_IoU_score
+                        # if volume >= 1:
+                        #     self.corresponding_IoU_dict[(i, j)] = box3d_IoU_score / volume * 10
 
         if len(self.corresponding_IoU_dict) != 0:
             self.Y = np.sum(list(self.corresponding_IoU_dict.values()))
@@ -38,5 +43,3 @@ class CorrespondingDetector():
     def get_Yscore(self):
         return self.Y / self.get_total_num()
     
-    
-

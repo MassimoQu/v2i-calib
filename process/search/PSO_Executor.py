@@ -13,13 +13,13 @@ from Filter3dBoxes import Filter3dBoxes
 from PSO_deconstructX import PSO_deconstructX
 from CorrespondingDetector import CorrespondingDetector
 from read_utils import read_yaml
-from extrinsic_utils import get_extrinsic_from_two_3dbox_object, convert_T_to_6DOF, implement_T_3dbox_object_list, convert_6DOF_to_T
+from extrinsic_utils import get_extrinsic_from_two_3dbox_object, convert_T_to_6DOF, implement_T_3dbox_object_list, convert_6DOF_to_T, get_RE_TE_by_compare_T_6DOF_result_true
 from BoxesMatch import BoxesMatch
 
 
 
 class PSO_Executor():
-    def __init__(self, infra_boxes_object_list, vehicle_boxes_object_list, true_T_6DOF = None, matches = [], filter_num = 15, verbose = False, visualize = False) -> None:
+    def __init__(self, infra_boxes_object_list, vehicle_boxes_object_list, true_T_6DOF = None, matches = [], filter_num = 15, boundary_delta = [2, 2, 2, 1, 1, 1], verbose = False, visualize = False, turn_off_pso = False) -> None:
         
         self.read_basic_parameters()
 
@@ -44,34 +44,66 @@ class PSO_Executor():
         # self.pso_init_X = np.eye(4)
         # self.pso_w = (0.8, 1.2)
 
-        self.cal_pso_bound()
+        # self.cal_pso_bound()
         
         if verbose:
-            print('true_T_6DOF: ', self.true_T_6DOF_format)
+            if self.true_T_6DOF_format is not None:
+                print('true_T_6DOF: ', self.true_T_6DOF_format)
             print('len(pso_init_X): ', len(self.pso_init_X))
-            for pso_init_x in self.pso_init_X:
-                print('- pso_init_x: ', pso_init_x)
-                corresponding_detector = CorrespondingDetector(implement_T_3dbox_object_list(convert_6DOF_to_T(pso_init_x), self.infra_boxes_object_list), self.vehicle_boxes_object_list)
+
+        best_RE, best_TE = np.inf, np.inf
+
+        for init_X in self.pso_init_X:
+            
+            ub = init_X + boundary_delta
+            lb = init_X - boundary_delta
+            if verbose:
+                print('- pso_init_x: ', init_X)
+                if self.true_T_6DOF_format is not None:
+                    print('delta_T_6DOF: ', init_X - self.true_T_6DOF_format)
+                corresponding_detector = CorrespondingDetector(implement_T_3dbox_object_list(convert_6DOF_to_T(init_X), self.infra_boxes_object_list), self.vehicle_boxes_object_list)
                 corresponding_IoU_dict = corresponding_detector.corresponding_IoU_dict
                 y_score = corresponding_detector.get_Yscore()
                 print('- corresponding_IoU_dict: ', corresponding_IoU_dict)
                 print('- y_score: ', y_score)
-                print('--------')
 
-            print('pso_lower_bound: ', self.pso_lower_bound)
-            print('pso_upper_bound: ', self.pso_upper_bound)
+                print('- ub: ', ub)
+                print('- lb: ', lb)
 
+            pso_best_x = init_X
 
-        self.pso = PSO_deconstructX(self.infra_boxes_object_list, self.vehicle_boxes_object_list, self.true_T_6DOF_format, self.pso_init_X, 
-                                    pop=self.population, max_iter=self.max_iter, ub=self.pso_upper_bound, lb=self.pso_lower_bound, w=self.pso_w, verbose=verbose)
+            if turn_off_pso:
+                pso_best_y = CorrespondingDetector(implement_T_3dbox_object_list(convert_6DOF_to_T(init_X), self.infra_boxes_object_list), self.vehicle_boxes_object_list).get_Yscore()
+            else:
+                pso = PSO_deconstructX(self.infra_boxes_object_list, self.vehicle_boxes_object_list, self.true_T_6DOF_format, np.array([init_X]), 
+                                        pop=self.population, max_iter=self.max_iter, ub=ub, lb=lb, w=self.pso_w, verbose=verbose)
+                pso_best_x, pso_best_y = pso.run()
 
-        self.pso.run()
+            if pso_best_y > self.pso_best_y:
+                self.pso_best_x = pso_best_x
+                self.pso_best_y = pso_best_y
+                if verbose:
+                    print('===update pso_best_x===: ', self.pso_best_x)
+                    print('===update pso_best_y===: ', self.pso_best_y)
 
-        if visualize:
-            plt.plot(self.pso.gbest_y_hist)
-            plt.show()
+            if self.true_T_6DOF_format is not None:
+                cur_RE, cur_TE =  get_RE_TE_by_compare_T_6DOF_result_true(pso_best_x, self.true_T_6DOF_format)
+                best_RE, best_TE = min(best_RE, cur_RE), min(best_TE, cur_TE)
+                if verbose:
+                    print('cur RE, TE: ', cur_RE, cur_TE)
+                    print('best RE, TE: ', best_RE, best_TE)
 
+            if verbose:
+                print('--------------------------')
+        
+        if verbose:
+            print('======pso_best_x======: ', self.pso_best_x)
+            print('======pso_best_y======: ', self.pso_best_y)
+            if self.true_T_6DOF_format is not None:
+                print('======pso result RE, TE======: ', *get_RE_TE_by_compare_T_6DOF_result_true(self.pso_best_x, self.true_T_6DOF_format))
+            print('======best RE, TE======: ', best_RE, best_TE)
 
+        
     def read_basic_parameters(self):
         config = read_yaml('./config.yml')
         self.population = config['pso']['population']
@@ -86,9 +118,10 @@ class PSO_Executor():
         self.pso_lower_bound = np.min(self.pso_init_X, axis=0)
         self.pso_upper_bound = np.max(self.pso_init_X, axis=0)
 
-
+    # to complete
     def get_pso_init_X(self):
-        pso_init_X = []        
+        pso_init_X = []
+        pso_y_score = []
         for match in self.matches:
             infra_box_object = self.infra_boxes_object_list[match[0]]
             vehicle_box_object = self.vehicle_boxes_object_list[match[1]]
@@ -96,22 +129,32 @@ class PSO_Executor():
             converted_infra_boxes_object_list = implement_T_3dbox_object_list(extrinsic, self.infra_boxes_object_list)
 
             corresponding_detector = CorrespondingDetector(converted_infra_boxes_object_list, self.vehicle_boxes_object_list)
-            if len(corresponding_detector.corresponding_IoU_dict) > 0 and corresponding_detector.get_Yscore() > 0.05:
+            if len(corresponding_detector.corresponding_IoU_dict) > 0 and corresponding_detector.get_Yscore() > 0:
                 pso_init_X.append(convert_T_to_6DOF(extrinsic))
-            
+                pso_y_score.append(corresponding_detector.get_Yscore())
 
-        pso_init_X.append(np.mean(np.array(pso_init_X), axis=0)) if len(pso_init_X) > 0 else None
-        self.pso_init_X = np.array(pso_init_X)
+        # pso_init_X.append(np.mean(np.array(pso_init_X), axis=0)) if len(pso_init_X) > 0 else None
+        
+        if len(pso_init_X) > 0:
+            pso_y_score = np.array(pso_y_score)
+            pso_init_X = np.array(pso_init_X)
+            sorted_indices = np.argsort(pso_y_score)[::-1]
+            self.pso_best_x = pso_init_X[sorted_indices[0]]
+            self.pso_best_y = pso_y_score[sorted_indices[0]]
 
-        if self.pso_init_X.shape[0] == 0:
-            # ??
-            return
-        elif self.pso_init_X.shape[0] == 1:
-            # ??
-            return 
+            sorted_y_scores = pso_y_score[sorted_indices]
+            max_y_score = np.max(pso_y_score)
+            filtered_indices = np.where(sorted_y_scores >= max(max_y_score * 0.8, max_y_score - 0.1))[0]
+            self.pso_init_X = pso_init_X[sorted_indices]
+            self.pso_init_X = self.pso_init_X[filtered_indices]
+        else:
+            self.pso_init_X = np.array([])
+            self.pso_best_x = np.array([])
+            self.pso_best_y = -1
+
 
     def get_best_T_6DOF(self):
-        return self.pso.best_x
+        return self.pso_best_x
 
 
 
@@ -119,14 +162,16 @@ class PSO_Executor():
 if __name__ == "__main__":
     
     # cooperative_reader = CooperativeReader('008663', '002505')
-    cooperative_reader = CooperativeReader('019839', '008819')
+    cooperative_reader = CooperativeReader('009229', '005007')
     infra_boxes_object_list, vehicle_boxes_object_list = cooperative_reader.get_cooperative_infra_vehicle_boxes_object_list()
     true_T_6DOF_format = convert_T_to_6DOF(cooperative_reader.get_cooperative_T_i2v())
-  
-    infra_boxes_object_list = Filter3dBoxes(infra_boxes_object_list).filter_according_to_size_topK(10)
-    vehicle_boxes_object_list = Filter3dBoxes(vehicle_boxes_object_list).filter_according_to_size_topK(10)
+
+    k = 15 
+
+    infra_boxes_object_list = Filter3dBoxes(infra_boxes_object_list).filter_according_to_size_topK(k)
+    vehicle_boxes_object_list = Filter3dBoxes(vehicle_boxes_object_list).filter_according_to_size_topK(k)
 
     boxes_match = BoxesMatch(infra_boxes_object_list, vehicle_boxes_object_list, true_T_6DOF_format, verbose=True)
     matches = boxes_match.get_matches()
-    pso_task = PSO_Executor(infra_boxes_object_list, vehicle_boxes_object_list, true_T_6DOF_format, matches, verbose=True, visualize=True)
+    pso_task = PSO_Executor(infra_boxes_object_list, vehicle_boxes_object_list, true_T_6DOF_format, matches, verbose=True, visualize=False)
     

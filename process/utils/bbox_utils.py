@@ -43,3 +43,7 @@ def get_length_between_bbox3d_8_3(bbox3d_8_3_one, bbox3d_8_3_two):
     length = np.linalg.norm(vector)
     return length
 
+def get_volume_from_bbox3d_8_3(bbox3d_8_3):
+    l, w, h = get_lwh_from_bbox3d_8_3(bbox3d_8_3)
+    volume = l * w * h
+    return volume

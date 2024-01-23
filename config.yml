@@ -1,6 +1,6 @@
 pso:
   max_iter: 25
-  population: 40
+  population: 20
   ub: [-45, 3, 3, 1, 1, 3.1415926]
   lb: [-50, -3, -3, -1, -1, -3.1415926]
 

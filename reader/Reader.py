@@ -1,6 +1,7 @@
 import os.path as osp
 import numpy as np
 import open3d as o3d
+import cv2
 from BBox3d import BBox3d
 import sys
 sys.path.append('./process/utils')
@@ -48,7 +49,8 @@ class Reader():
         for label in labels:
             box_8_3 = self.get_3dboxes_8_3(label)
             if box_8_3 is None:
-                continue
+                continue         
+
             bbox3d_list.append(BBox3d(label["type"].lower(), box_8_3, self.get_2dboxes_4(label), int(label["occluded_state"]), float(label["truncated_state"]), float(label["alpha"])) )
         return bbox3d_list
 
