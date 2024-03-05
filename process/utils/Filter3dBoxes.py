@@ -9,6 +9,29 @@ class Filter3dBoxes():
         self.boxes_object_list = boxes_object_list
 
 
+    def filter_according_to_topK_confidence(self, confidence_threshold = 0.8, k = 15):
+        # 筛选出置信度大于阈值的检测框
+        high_confidence_detections = [boxes_object for boxes_object in self.boxes_object_list if boxes_object.get_confidence() > confidence_threshold]
+
+        # 根据置信度排序
+        high_confidence_detections.sort(key=lambda x: x.get_confidence(), reverse=True)
+
+        # 如果数量超过 k，只取前 k 个
+        if len(high_confidence_detections) > k:
+            return high_confidence_detections[:k]
+
+        # 如果数量少于 k，从剩余的检测框中补充
+        remaining_detections = [boxes_object for boxes_object in self.boxes_object_list if boxes_object not in high_confidence_detections]
+        remaining_detections.sort(key=lambda x: x.get_confidence(), reverse=True)
+        supplement_count = min(len(remaining_detections), k // 3 - len(high_confidence_detections))
+
+        # 如果不需要补充，或者没有足够的检测框来补充
+        if supplement_count <= 0:
+            return high_confidence_detections
+
+        return high_confidence_detections + remaining_detections[:supplement_count]
+
+
     def filter_according_to_occlusion(self, degree = 0):
         filtered_boxes_object_list = []
         for box_object in self.boxes_object_list:

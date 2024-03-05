@@ -17,6 +17,8 @@ from read_utils import read_json
 #     return int(self.para_yaml['pso']['population'])
 
 
+class_names = ["pedestrian", "cyclist", "car"]
+
 
 class Reader():
     def __init__(self, data_folder = '/mnt/c/Users/10612/Downloads/cooperative_data'):
@@ -52,6 +54,29 @@ class Reader():
                 continue         
 
             bbox3d_list.append(BBox3d(label["type"].lower(), box_8_3, self.get_2dboxes_4(label), int(label["occluded_state"]), float(label["truncated_state"]), float(label["alpha"])) )
+        return bbox3d_list
+
+    def get_3dbbox_object_list_predicted(self, path_label):
+        labels = read_json(path_label) 
+        bbox3d_list = []
+
+        boxes_3d = labels["boxes_3d"]
+        boxes_3d_array = np.array(boxes_3d)
+
+        # print(boxes_3d_array.shape)##
+
+        label_list = labels["labels_3d"]
+        scores_list = labels["scores_3d"]
+
+        for i in range(len(boxes_3d)):
+            label = label_list[i]
+            box_8_3 = boxes_3d_array[i,:]
+            score = scores_list[i]
+            if box_8_3 is None or box_8_3.all() == 0:
+                continue
+
+            bbox3d_list.append(BBox3d(class_names[label], box_8_3, confidence=score) )
+        
         return bbox3d_list
 
     def get_pointcloud(self, path_pointcloud):

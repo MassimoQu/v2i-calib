@@ -1,11 +1,12 @@
 class BBox:
     # represent both 2d bbox and 3d bbox
-    def __init__(self, bbox_type, bbox_4 = [0, 0, 0, 0], occluded_state = 0, truncated_state = 0, alpha = 0.0):
+    def __init__(self, bbox_type, bbox_4 = [0, 0, 0, 0], occluded_state = 0, truncated_state = 0, alpha = 0.0, confidence = 1.0):
         self.bbox_type = bbox_type
         self.occluded_state = occluded_state
         self.truncated_state = truncated_state
         self.alpha = alpha
         self.bbox2d_4 = bbox_4
+        self.confidence = confidence
 
     def __eq__(self, other):
         if not isinstance(other, BBox):
@@ -28,6 +29,9 @@ class BBox:
     
     def get_alpha(self):
         return self.alpha
+    
+    def get_confidence(self):
+        return self.confidence
 
     def copy(self):
         return BBox(self.bbox_type, self.occluded_state, self.truncated_state)

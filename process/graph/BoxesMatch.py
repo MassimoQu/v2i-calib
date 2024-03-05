@@ -3,19 +3,20 @@ import json
 import numpy as np
 import cv2
 import sys 
-sys.path.append('./reader')
-sys.path.append('./process/utils')
-sys.path.append('./process/corresponding')
-sys.path.append('./visualize')
+sys.path.append('/home/massimo/vehicle_infrastructure_calibration/reader')
+sys.path.append('/home/massimo/vehicle_infrastructure_calibration/process/utils')
+sys.path.append('/home/massimo/vehicle_infrastructure_calibration/process/corresponding')
+sys.path.append('/home/massimo/vehicle_infrastructure_calibration/visualize')
 
 from CooperativeBatchingReader import CooperativeBatchingReader
 from CooperativeReader import CooperativeReader
 from CorrespondingDetector import CorrespondingDetector
 from Filter3dBoxes import Filter3dBoxes
 from scipy.optimize import linear_sum_assignment
-from extrinsic_utils import get_time_judge, implement_T_3dbox_object_list, get_extrinsic_from_two_3dbox_object
+from extrinsic_utils import get_time_judge, implement_T_3dbox_object_list, get_extrinsic_from_two_3dbox_object,convert_T_to_6DOF
 import similarity_utils
 from appearance_similarity import cal_appearance_similarity
+from BBoxVisualizer_open3d import BBoxVisualizer_open3d
 
 def crop_image_with_box2d(image, box2d):
     x1, y1, x2, y2 = box2d
@@ -31,7 +32,7 @@ def crop_image_with_box2d(image, box2d):
 
 class BoxesMatch():
 
-    def __init__(self,infra_boxes_object_list, vehicle_boxes_object_list, T_infra2vehicle = None, verbose=False, image_list = None):
+    def __init__(self,infra_boxes_object_list, vehicle_boxes_object_list, T_infra2vehicle = None, verbose=False, image_list = None, VIPS_flag = False):
 
         self.infra_boxes_object_list, self.vehicle_boxes_object_list = infra_boxes_object_list, vehicle_boxes_object_list
         
@@ -47,7 +48,7 @@ class BoxesMatch():
 
         self.verbose = verbose
 
-        @get_time_judge(verbose)
+        # @get_time_judge(verbose)
         def cal_KP():
 
             for i, infra_bbox_object in enumerate(self.infra_boxes_object_list):
@@ -57,21 +58,24 @@ class BoxesMatch():
                     if infra_bbox_object.get_bbox_type() != vehicle_bbox_object.get_bbox_type():
                         self.KP[i, j] = 0
                         continue
-                    # 检测框大小
-                    # similarity_size = similarity_utils.cal_similarity_size(infra_bbox_object.get_bbox3d_8_3(), vehicle_bbox_object.get_bbox3d_8_3())
-                    # 邻近k个点的相似度
-                    # similarity_knn = similarity_utils.cal_similarity_knn(self.infra_boxes_object_list, i, self.vehicle_boxes_object_list, j)
-                    # self.KP[i, j] = int(similarity_size * 10) + int(similarity_knn)
-                    # self.KP[i, j] =  int(similarity_knn)
-
+                    
                     T = get_extrinsic_from_two_3dbox_object(infra_bbox_object, vehicle_bbox_object)
                     converted_infra_boxes_object_list = implement_T_3dbox_object_list(T, infra_boxes_object_list)
                     
                     corresponding_detector = CorrespondingDetector(converted_infra_boxes_object_list, vehicle_boxes_object_list)
 
+                    if VIPS_flag:
+                        # 检测框大小
+                        # similarity_size = similarity_utils.cal_similarity_size(infra_bbox_object.get_bbox3d_8_3(), vehicle_bbox_object.get_bbox3d_8_3())
+                        # 邻近k个点的相似度
+                        similarity_knn = similarity_utils.cal_similarity_knn(self.infra_boxes_object_list, i, self.vehicle_boxes_object_list, j)
+                        # # self.KP[i, j] = int(similarity_size * 10) + int(similarity_knn)
+                        self.KP[i, j] =  int(similarity_knn)
+                    else:
+                        self.KP[i, j] = int(corresponding_detector.get_Yscore() * 100) * infra_bbox_object.get_confidence() * vehicle_bbox_object.get_confidence()
+
                     self.matches_num.append(corresponding_detector.get_matched_num())
 
-                    self.KP[i, j] = int(corresponding_detector.get_Yscore() * 100) 
 
             self.matches_num = sorted(self.matches_num)
             self.matches_avg_num = np.mean(self.matches_num[-3:])
@@ -80,12 +84,14 @@ class BoxesMatch():
             if len(self.matches_num) > 0:
                 max_matches_num = np.max(self.matches_num)
 
-            max_val = np.max(self.KP)
-            min_val = np.min(self.KP)
-            for i in range(len(self.infra_boxes_object_list)):
-                for j in range(len(self.vehicle_boxes_object_list)):
-                    if self.KP[i, j] != 0:
-                        self.KP[i, j] = int((self.KP[i, j] - min_val) / (max_val - min_val) * 10)
+            if self.KP.shape[0] > 0 and self.KP.shape[1] > 0:
+                max_val = np.max(self.KP)
+                min_val = np.min(self.KP)
+                for i in range(len(self.infra_boxes_object_list)):
+                    for j in range(len(self.vehicle_boxes_object_list)):
+                        if self.KP[i, j] != 0:
+                            self.KP[i, j] = int((self.KP[i, j] - min_val) / (max_val - min_val) * 10)
+
 
             if 0 < max_matches_num < 2:
                 for i in range(len(self.infra_boxes_object_list)):
@@ -396,10 +402,36 @@ def batching_test_matches_score(verbose = False, k = 15):
     plt.ylabel('Count')
     plt.grid(True)
     plt.show()
+
+
+def test_get_matches_with_score(infra_bboxes_object_list, vehicle_bboxes_object_list):
+    boxes_matcher = BoxesMatch(infra_bboxes_object_list, vehicle_bboxes_object_list)
+    matches_with_score = boxes_matcher.get_matches_with_score()
+    print('matches_with_score: ', matches_with_score)
+    for match in matches_with_score:
+        print('match: ', match[0])
+        print('score: ', match[1])
     
 
 
 if __name__ == "__main__":
     # specific_test_boxes_match('007489', '000289', k=15)
     # batching_test_boxes_match(verbose=True, k=15)
-    batching_test_matches_score(verbose=True, k=15)
+    # batching_test_matches_score(verbose=True, k=15)
+
+    # infra_bboxes_object_list, vehicle_bboxes_object_list = CooperativeReader('007038', '000546').get_cooperative_infra_vehicle_boxes_object_list_predicted()
+    cooperative_reader = CooperativeReader('007038', '000546')
+    infra_bboxes_object_list, vehicle_bboxes_object_list = cooperative_reader.get_cooperative_infra_vehicle_boxes_object_list()
+    T_true_6DOF = convert_T_to_6DOF(cooperative_reader.get_cooperative_T_i2v())
+    print('T_true: ', T_true_6DOF)
+    # test_get_matches_with_score(infra_bboxes_object_list, vehicle_bboxes_object_list)
+    boxes_matcher = BoxesMatch(infra_bboxes_object_list, vehicle_bboxes_object_list)
+    matches_with_score = boxes_matcher.get_matches_with_score()
+
+    for match, score in matches_with_score:
+        infra_bbox_object = infra_bboxes_object_list[match[0]]
+        vehicle_bbox_object = vehicle_bboxes_object_list[match[1]]
+        T_6DOF = convert_T_to_6DOF(get_extrinsic_from_two_3dbox_object(infra_bbox_object, vehicle_bbox_object))
+        print('T_6DOF: ', T_6DOF)
+        print('score: ', score)
+        print('------------------------------------')

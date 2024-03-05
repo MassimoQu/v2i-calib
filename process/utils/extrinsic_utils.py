@@ -1,6 +1,7 @@
 from scipy.spatial.transform import Rotation
 import numpy as np
 import time
+import pygicp
 from functools import wraps
 
 def get_time(func):
@@ -55,7 +56,7 @@ def convert_T_to_Rt(T):
 def convert_Rt_to_T(R, t):
     T = np.eye(4)
     T[:3, :3] = np.array(R)
-    T[:3, [3]] = np.array(t)
+    T[:3, [3]] = np.array(t).reshape(3, 1)
     return T
 
 def get_reverse_T(T):
@@ -128,12 +129,16 @@ def get_extrinsic_from_two_points(points1, points2):
     H = np.dot(points1.T, points2)
     U, _, Vt = np.linalg.svd(H)
     R = np.dot(Vt.T, U.T)
+    # print('U', U)
+    # print('Vt', Vt)
     
     if np.linalg.det(R) < 0:
         Vt[2, :] *= -1
         R = np.dot(Vt.T, U.T)
 
     t = -np.dot(R, centroid1.T) + centroid2.T
+    # print('centroid1', centroid1)
+    # print('centroid2', centroid2)
 
     T = np.eye(4)
     T[:3, :3] = R
@@ -163,3 +168,27 @@ def get_RE_TE_by_compare_T_6DOF_result_true(T1_6DOF, T2_6DOF):
     TE = np.linalg.norm(t1 - t2)
     return RE, TE
     
+def optimize_extrinsic_from_two_points(points1, points2, initial_guess=np.eye(4)):
+    # assert points1.shape == points2.shape
+    # assert points1.shape[0] == 3
+    # assert points1.shape[1] >= 3
+
+    target = points1
+    source = points2
+
+    matrix = pygicp.align_points(target, source, initial_guess=initial_guess)
+
+    return matrix
+
+def optimize_extrinsic_from_two_3dbox_object(box_object_1, box_object_2):
+    points1 = box_object_1.get_bbox3d_8_3()
+    points2 = box_object_2.get_bbox3d_8_3()
+
+    return optimize_extrinsic_from_two_points(points1, points2, initial_guess=get_extrinsic_from_two_points(points1, points2))
+
+def optimize_extrinsic_from_two_mixed_3dbox_object_list(box_object_list_1, box_object_list_2):
+    if len(box_object_list_1) == 0 or len(box_object_list_2) == 0:
+        return np.eye(4)
+    points1 = np.concatenate([box_object.get_bbox3d_8_3() for box_object in box_object_list_1], axis=0)
+    points2 = np.concatenate([box_object.get_bbox3d_8_3() for box_object in box_object_list_2], axis=0)
+    return optimize_extrinsic_from_two_points(points1, points2, initial_guess=get_extrinsic_from_two_points(points1, points2))

@@ -3,8 +3,8 @@ import numpy as np
 from BBox import BBox
 
 class BBox3d(BBox):
-    def __init__(self, bbox_type, bbox_8_3, bbox_4 = [0, 0, 0, 0], occluded_state = 0, truncated_state = 0, alpha = 0.0):
-        super().__init__(bbox_type, bbox_4, occluded_state, truncated_state, alpha)
+    def __init__(self, bbox_type, bbox_8_3, bbox_4 = [0, 0, 0, 0], occluded_state = 0, truncated_state = 0, alpha = 0.0, confidence = 1.0):
+        super().__init__(bbox_type, bbox_4, occluded_state, truncated_state, alpha, confidence)
         self.bbox3d_8_3 = bbox_8_3
 
     def __eq__(self, other):

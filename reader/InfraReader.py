@@ -19,16 +19,18 @@ class InfraReader(Reader):
         return osp.join(self.cooperative_folder, 'infrastructure-side', 'calib', 'virtuallidar_to_world', self.infra_file_name + '.json')
     
     def parse_infra_image_path(self):
-        folder_infra_image = osp.join(self.data_folder, 'cooperative-vehicle-infrastructure-infrastructure-side-image')
+        folder_infra_image = osp.join(self.cooperative_folder, 'infrastructure-side', 'image')
         return osp.join(folder_infra_image, self.infra_file_name + '.jpg')
 
     def parse_infra_pointcloud_path(self):
-        folder_infra_pointcloud = osp.join(self.data_folder, 'cooperative-vehicle-infrastructure-infrastructure-side-velodyne')
+        folder_infra_pointcloud = osp.join(self.cooperative_folder, 'infrastructure-side', 'velodyne')
         return osp.join(folder_infra_pointcloud, self.infra_file_name + '.pcd')
 
     def parse_infra_label_path(self):
         return osp.join(self.cooperative_folder, 'infrastructure-side', 'label', 'virtuallidar', self.infra_file_name + '.json')
     
+    def parse_infra_label_predicted_path(self):
+        return osp.join('/home/massimo/DAIR-V2X-calibration/cache/vic-late-lidar/inf/lidar', self.infra_file_name + '.json')
 
     def get_infra_image(self):
         return cv2.imread(self.parse_infra_image_path())
@@ -38,6 +40,9 @@ class InfraReader(Reader):
     
     def get_infra_boxes_object_list(self):
         return self.get_3dbbox_object_list(self.parse_infra_label_path())
+    
+    def get_infra_boxes_object_list_predicted(self):
+        return self.get_3dbbox_object_list_predicted(self.parse_infra_label_predicted_path())
 
     def get_infra_intrinsic(self):
         return self.get_intrinsic(self.parse_infra_intrinsic_path())

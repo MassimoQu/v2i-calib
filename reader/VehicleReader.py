@@ -22,16 +22,18 @@ class VehicleReader(Reader):
         return osp.join(self.cooperative_folder, 'vehicle-side', 'calib', 'lidar_to_novatel', self.vehicle_file_name + '.json')
     
     def parse_vehicle_image_path(self):
-        folder_vehicle_image = osp.join(self.data_folder, 'cooperative-vehicle-infrastructure-vehicle-side-image')
+        folder_vehicle_image = osp.join(self.cooperative_folder, 'vehicle-side', 'image')
         return osp.join(folder_vehicle_image, self.vehicle_file_name + '.jpg')
 
     def parse_vehicle_pointcloud_path(self):
-        folder_vehicle_pointcloud = osp.join(self.data_folder, 'cooperative-vehicle-infrastructure-vehicle-side-velodyne')
+        folder_vehicle_pointcloud = osp.join(self.cooperative_folder, 'vehicle-side', 'velodyne')
         return osp.join(folder_vehicle_pointcloud, self.vehicle_file_name + '.pcd')
 
     def parse_vehicle_label_path(self):
         return osp.join(self.cooperative_folder, 'vehicle-side', 'label', 'lidar', self.vehicle_file_name + '.json')
-
+    
+    def parse_vehicle_label_predicted_path(self):
+        return osp.join('/home/massimo/DAIR-V2X-calibration/cache/vic-late-lidar/veh/lidar', self.vehicle_file_name + '.json')
 
     def get_vehicle_image(self):
         return cv2.imread(self.parse_vehicle_image_path())
@@ -41,6 +43,9 @@ class VehicleReader(Reader):
   
     def get_vehicle_boxes_object_list(self):
         return self.get_3dbbox_object_list(self.parse_vehicle_label_path())
+    
+    def get_vehicle_boxes_object_list_predicted(self):
+        return self.get_3dbbox_object_list_predicted(self.parse_vehicle_label_predicted_path())
 
     def get_vehicle_intrinsic(self):
         return self.get_intrinsic(self.parse_vehicle_intrinsic_path())
