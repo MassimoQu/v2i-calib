@@ -2,6 +2,9 @@ import os.path as osp
 import cv2
 from Reader import Reader
 from read_utils import read_json
+import sys
+sys.path.append('./process/utils')
+from extrinsic_utils import convert_Rt_to_T
 
 
 class InfraReader(Reader):
@@ -55,3 +58,9 @@ class InfraReader(Reader):
         translation[1][0] += virtuallidar2world["relative_error"]["delta_y"]
         return rotation, translation
 
+    def get_infra_lidar2camera(self):
+        lidar2camera = read_json(self.parse_infra_virtuallidar2camera_path())
+        rotation = lidar2camera["rotation"]
+        translation = lidar2camera["translation"]
+        return convert_Rt_to_T(rotation, translation)
+    

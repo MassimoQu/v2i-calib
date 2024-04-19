@@ -25,6 +25,8 @@ class CooperativeBatchingReader:
             vehicle_file_names.append(vehicle_img_path.split('/')[-1].split('.')[0])
         return infra_file_names, vehicle_file_names
     
+    
+
     def generate_infra_vehicle_bboxes_object_list(self, start_idx=0, end_idx=-1):
         if end_idx == -1:
             end_idx = len(self.infra_file_names)

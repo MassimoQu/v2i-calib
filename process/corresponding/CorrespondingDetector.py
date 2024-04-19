@@ -12,7 +12,7 @@ class CorrespondingDetector():
         self.vehicle_bboxes_object_list = vehicle_bboxes_object_list
 
         self.corresponding_IoU_dict = {}
-        self.Y = -1
+        self.Y = 0
 
         self.cal_IoU_corresponding()
 
@@ -41,5 +41,8 @@ class CorrespondingDetector():
         return min(len(self.infra_bboxes_object_list), len(self.vehicle_bboxes_object_list))
     
     def get_Yscore(self):
+        total_num = self.get_total_num()
+        if total_num == 0:
+            return 0
         return self.Y / self.get_total_num()
     

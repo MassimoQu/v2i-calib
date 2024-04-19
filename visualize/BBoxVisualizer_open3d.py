@@ -49,7 +49,7 @@ class BBoxVisualizer_open3d():
         vis = o3d.visualization.Visualizer()
         vis.create_window()
         # 绘制点云
-        pointcloud_colors = [(0.25, 0, 0), (0, 0.25, 0)]
+        pointcloud_colors = [(0.5, 0, 0), (0, 0.5, 0)]
         # pointcloud_colors = [(0, 0.25, 0), (0.25, 0, 0)]
         
         # pointcloud_colors = [(1, 0, 0), (0, 1, 0)]

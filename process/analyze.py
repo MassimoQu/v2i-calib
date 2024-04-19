@@ -1,6 +1,11 @@
+import math
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib
+import json
+import pandas as pd
+import seaborn as sns
 import json
 import sys
 # sys.path.append('./reader')
@@ -14,120 +19,8 @@ sys.path.append('./process/utils')
 # from BoxesMatch import BoxesMatch
 # from Filter3dBoxes import Filter3dBoxes
 # from PSO_Executor import PSO_Executor
-from extrinsic_utils import convert_6DOF_to_T, convert_T_to_Rt
+# from extrinsic_utils import convert_6DOF_to_T, convert_T_to_Rt
 # from BBoxVisualizer_open3d import BBoxVisualizer_open3d
-
-
-def count_test_result(folder_name = r'intermediate_output/'):
-    total_cnt = 650
-    k = 15
-    # folder_name = r'intermediate_output/extrinsic_test/'
-    # file_name_list = ['invalid_extrinsic_k15_cnt', 'no_common_view_k15_cnt', 'valid_extrinsic_k15_cnt', 'valid_bad_extrinsic_k15_cnt']
-
-    file_name_list = ['valid_extrinsic_k' + str(k) + '_cnt', 'valid_bad_extrinsic_k' + str(k) + '_cnt', 'invalid_extrinsic_k' + str(k) + '_cnt', 'no_common_view_k' + str(k) + '_cnt']
-    
-    valid_cnt = 0
-    valid_bad_cnt = 0
-    invalid_cnt = 0
-    no_common_cnt = 0
-
-    RE_list = []
-    TE_list = []
-    time_cost_list = []
-    x_list = []
-    y_list = []
-    z_list = []
-    roll_list = []
-    pitch_list = []
-    yaw_list = []
-
-    for cnt in range(50, total_cnt + 1, 50):
-        for file_name in file_name_list:
-            with open(folder_name + file_name + str(cnt) + '.json', 'r') as f:
-                example_list = json.load(f)
-                
-            if file_name == file_name_list[0]:
-                valid_cnt += len(example_list)
-                RE_list_part = [example['RE'] for example in example_list]
-                TE_list_part = [example['TE'] for example in example_list]
-                time_cost_list_part = [example['cost_time'] for example in example_list]
-
-                x_list_part = [np.abs(example['delta_T_6DOF'][0]) for example in example_list]
-                y_list_part = [np.abs(example['delta_T_6DOF'][1]) for example in example_list]
-                z_list_part = [np.abs(example['delta_T_6DOF'][2]) for example in example_list]
-                roll_list_part = []
-                pitch_list_part = []
-                yaw_list_part = []
-                for example in example_list:
-                    i = 0
-                    for alpha in example['delta_T_6DOF'][3:]:
-                        if alpha > 180:
-                            alpha = alpha - 360                         
-                        elif alpha < -180: 
-                            alpha = alpha + 360
-                        if i == 0:
-                            roll_list_part.append(np.abs(alpha))
-                        elif i == 1:
-                            pitch_list_part.append(np.abs(alpha))
-                        elif i == 2:
-                            yaw_list_part.append(np.abs(alpha))
-                        i += 1
-
-                RE_list += RE_list_part
-                TE_list += TE_list_part
-                time_cost_list += time_cost_list_part
-                
-                x_list += x_list_part
-                y_list += y_list_part
-                z_list += z_list_part
-                roll_list += roll_list_part
-                pitch_list += pitch_list_part
-                yaw_list += yaw_list_part
-
-            elif file_name == file_name_list[1]:
-                valid_bad_cnt += len(example_list)
-            elif file_name == file_name_list[2]:
-                invalid_cnt += len(example_list)
-            elif file_name == file_name_list[3]:
-                no_common_cnt += len(example_list)
-    
-    RE_mean = sum(RE_list) / len(RE_list)
-    TE_mean = sum(TE_list) / len(TE_list)
-    time_cost_mean = sum(time_cost_list) / len(time_cost_list)
-    x_mean = sum(x_list) / len(x_list)
-    y_mean = sum(y_list) / len(y_list)
-    z_mean = sum(z_list) / len(z_list)
-    roll_mean = sum(roll_list) / len(roll_list)
-    pitch_mean = sum(pitch_list) / len(pitch_list)
-    yaw_mean = sum(yaw_list) / len(yaw_list)
-    delta_T_6DOF_mean_seperate_cal = [x_mean, y_mean, z_mean, roll_mean, pitch_mean, yaw_mean]
-
-    plt.figure(figsize=(4, 6))
-    plt.boxplot([RE_list, TE_list], labels=['RE(' + str(len(RE_list)), 'TE' + str(len(TE_list)) + ')'])
-    plt.title('RE & TE of valid extrinsic')
-    plt.xticks(rotation=45, ha='right')
-    plt.grid(True)
-    # plt.show()
-
-    plt.figure(figsize=(6, 6))
-    plt.boxplot([x_list, y_list, z_list, roll_list, pitch_list, yaw_list], labels=['x(' + str(len(x_list)), 'y(' + str(len(y_list)), 'z(' + str(len(z_list)), 'roll(' + str(len(roll_list)), 'pitch(' + str(len(pitch_list)), 'yaw(' + str(len(yaw_list)) + ')'])
-    plt.title('delta_T_6DOF of valid extrinsic')
-    plt.xticks(rotation=45, ha='right')
-    plt.grid(True)
-
-
-    plt.figure(figsize=(4, 6))
-    plt.boxplot(time_cost_list, labels=['time_cost(' + str(len(time_cost_list)) + ')'])
-    plt.title('time_cost of valid extrinsic')
-    plt.xticks(rotation=45, ha='right')
-    plt.grid(True)
-    plt.show()
-
-    print(f'total: {total_cnt}, valid_cnt: {valid_cnt}, valid_bad_cnt: {valid_bad_cnt}, invalid_cnt: {invalid_cnt}, no_common_cnt: {no_common_cnt}')
-    print(f'reacall: {valid_cnt / (valid_bad_cnt + valid_cnt)}, valid_cnt / total_cnt: {valid_cnt / total_cnt}, valid_bad_cnt / total_cnt: {valid_bad_cnt / total_cnt},')
-    print(f' invalid_cnt / total_cnt: {invalid_cnt / total_cnt}, no_common_cnt / total_cnt: {no_common_cnt / total_cnt}')
-    print(f'RE_mean: {RE_mean}, TE_mean: {TE_mean}, time_cost_mean: {time_cost_mean}')
-    print(f'delta_T_6DOF_mean_seperate_cal(x,y,z,roll,pitch,yaw): {delta_T_6DOF_mean_seperate_cal}')
 
 
 def devide_group_according_scene_difficulty(total_cnt = 650, k = 15, folder_name = r'intermediate_output/', output_folder = r'intermediate_output/111/'):
@@ -862,20 +755,33 @@ def count_pointcloud_based_result_according_difficulty(total_cnt = 650, k = 15, 
 
     print('finished')
     
-if __name__ == "__main__":
+def plot_violin_plot(data, title, x_label, y_label, save_path = None):
+    plt.figure(figsize=(5, 5))
+    plt.violinplot(data, showmeans=True, showmedians=True)
+    plt.title(title)
+    plt.xlabel(x_label)
+    plt.ylabel(y_label)
+    plt.xticks(rotation=45, ha='right')
+    plt.grid(True)
+    if save_path:
+        plt.savefig(save_path)
+    plt.show()
+
+
+# if __name__ == "__main__":
     # analyze_bad_test()
 
     # count_test_result()
 
-    total_num = 500
-    data_folder = r'intermediate_output/v2i-calib_gicp_final_optimization/hard_dataset/'
+    # total_num = 500
+    # data_folder = r'new_clean_result/extrinsic_core_category_svd_trueT/easy_dataset/'
     # intermediate_folder = r'intermediate_output/VIPS-matches_threshold_filter/easy_dataset/group/'
 
     # devide_group_according_scene_difficulty(total_cnt = total_num, k = 15, folder_name = data_folder, output_folder = intermediate_folder)
 
     # count_test_result_according_scene_difficulty(total_num = total_num, k = 15, visualize=False, folder_name = intermediate_folder)
 
-    count_result_according_difficulty(total_cnt = total_num, k = 15, folder_name = data_folder)
+    # count_result_according_difficulty(total_cnt = total_num, k = 15, folder_name = data_folder)
 
     # count_time_cost_according_difficulty(total_cnt = total_num, k = 15, folder_name = data_folder)
 

@@ -5,6 +5,9 @@ from extrinsic_utils import implement_R_t_points_n_3, convert_Rt_to_T
 from read_utils import read_json
 from InfraReader import InfraReader
 from VehicleReader import VehicleReader
+import sys
+sys.path.append('./process/utils')
+from extrinsic_utils import convert_Rt_to_T
 
 
 class CooperativeReader():
@@ -24,6 +27,9 @@ class CooperativeReader():
     def get_cooperative_T_i2v(self):
         return convert_Rt_to_T(*self.get_cooperative_Rt_i2v())
     
+    def get_infra_vehicle_lidar2camera(self):
+        return self.infra_reader.get_infra_lidar2camera(), self.vehicle_reader.get_vehicle_lidar2camera()
+
     def get_cooperative_infra_vehicle_boxes_object_list(self):
         return self.infra_reader.get_infra_boxes_object_list(), self.vehicle_reader.get_vehicle_boxes_object_list()
     
@@ -36,6 +42,9 @@ class CooperativeReader():
     def get_cooperative_infra_vehicle_image(self):
         return self.infra_reader.get_infra_image(), self.vehicle_reader.get_vehicle_image()
     
+    def get_infra_vehicle_camera_instrinsics(self):
+        return self.infra_reader.get_infra_intrinsic(), self.vehicle_reader.get_vehicle_intrinsic()
+
     def get_cooperative_infra_vehicle_pointcloud_vehicle_coordinate(self):
         infra_pointcloud, vehicle_pointcloud = self.get_cooperative_infra_vehicle_pointcloud()
         R_infra_lidar_2_vehicle_lidar, t_infra_lidar_2_vehicle_lidar = self.get_cooperative_Rt_i2v()

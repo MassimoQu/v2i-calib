@@ -15,24 +15,12 @@ from Filter3dBoxes import Filter3dBoxes
 from scipy.optimize import linear_sum_assignment
 from extrinsic_utils import get_time_judge, implement_T_3dbox_object_list, get_extrinsic_from_two_3dbox_object,convert_T_to_6DOF
 import similarity_utils
-from appearance_similarity import cal_appearance_similarity
 from BBoxVisualizer_open3d import BBoxVisualizer_open3d
 
-def crop_image_with_box2d(image, box2d):
-    x1, y1, x2, y2 = box2d
-
-    # print('x1, y1, x2, y2: ', x1, y1, x2, y2)
-    # cv2.imshow('image', image)
-    # cv2.waitKey(0)
-
-    # to int
-    x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
-
-    return image[y1:y2, x1:x2]
 
 class BoxesMatch():
 
-    def __init__(self,infra_boxes_object_list, vehicle_boxes_object_list, T_infra2vehicle = None, verbose=False, image_list = None, VIPS_flag = False):
+    def __init__(self,infra_boxes_object_list, vehicle_boxes_object_list, T_infra2vehicle = None, verbose=False, image_list = None, similarity_strategy = ['core', 'category']):
 
         self.infra_boxes_object_list, self.vehicle_boxes_object_list = infra_boxes_object_list, vehicle_boxes_object_list
         
@@ -43,64 +31,30 @@ class BoxesMatch():
         self.result_matches = []
         self.total_matches = []
 
-        self.matches_num = []
-        self.matches_avg_num = 0
-
         self.verbose = verbose
 
         # @get_time_judge(verbose)
         def cal_KP():
 
-            for i, infra_bbox_object in enumerate(self.infra_boxes_object_list):
-                # print('i == ', i)
-                # print(infra_bbox_object.get_bbox_type())
-                for j, vehicle_bbox_object in enumerate(self.vehicle_boxes_object_list):
-                    if infra_bbox_object.get_bbox_type() != vehicle_bbox_object.get_bbox_type():
-                        self.KP[i, j] = 0
-                        continue
-                    
-                    T = get_extrinsic_from_two_3dbox_object(infra_bbox_object, vehicle_bbox_object)
-                    converted_infra_boxes_object_list = implement_T_3dbox_object_list(T, infra_boxes_object_list)
-                    
-                    corresponding_detector = CorrespondingDetector(converted_infra_boxes_object_list, vehicle_boxes_object_list)
+            if 'core' in similarity_strategy:
+                KP, max_matches_num = similarity_utils.cal_core_KP(self.infra_boxes_object_list, self.vehicle_boxes_object_list, category_flag=('category' in similarity_strategy))
+                self.KP += KP
+            else:
+                max_matches_num = -1
 
-                    if VIPS_flag:
-                        # 检测框大小
-                        # similarity_size = similarity_utils.cal_similarity_size(infra_bbox_object.get_bbox3d_8_3(), vehicle_bbox_object.get_bbox3d_8_3())
-                        # 邻近k个点的相似度
-                        similarity_knn = similarity_utils.cal_similarity_knn(self.infra_boxes_object_list, i, self.vehicle_boxes_object_list, j)
-                        # # self.KP[i, j] = int(similarity_size * 10) + int(similarity_knn)
-                        self.KP[i, j] =  int(similarity_knn)
-                    else:
-                        self.KP[i, j] = int(corresponding_detector.get_Yscore() * 100) * infra_bbox_object.get_confidence() * vehicle_bbox_object.get_confidence()
+            if 'length' in similarity_strategy:
+                self.KP += similarity_utils.cal_other_edge_KP(self.infra_boxes_object_list, self.vehicle_boxes_object_list, category_flag=('category' in similarity_strategy), similarity_strategy='length')
 
-                    self.matches_num.append(corresponding_detector.get_matched_num())
+            if 'angle' in similarity_strategy:
+                self.KP += similarity_utils.cal_other_edge_KP(self.infra_boxes_object_list, self.vehicle_boxes_object_list, category_flag=('category' in similarity_strategy), similarity_strategy='angle')
 
+            # 尝试转到合适的位置求 3dIoU 
+            if 'size' in similarity_strategy:
+                self.KP += similarity_utils.cal_other_vertex_KP(self.infra_boxes_object_list, self.vehicle_boxes_object_list, category_flag=('category' in similarity_strategy), similarity_strategy='size')
 
-            self.matches_num = sorted(self.matches_num)
-            self.matches_avg_num = np.mean(self.matches_num[-3:])
-
-            max_matches_num = 0
-            if len(self.matches_num) > 0:
-                max_matches_num = np.max(self.matches_num)
-
-            if self.KP.shape[0] > 0 and self.KP.shape[1] > 0:
-                max_val = np.max(self.KP)
-                min_val = np.min(self.KP)
-                for i in range(len(self.infra_boxes_object_list)):
-                    for j in range(len(self.vehicle_boxes_object_list)):
-                        if self.KP[i, j] != 0:
-                            self.KP[i, j] = int((self.KP[i, j] - min_val) / (max_val - min_val) * 10)
-
-
-            if 0 < max_matches_num < 2:
-                for i in range(len(self.infra_boxes_object_list)):
-                    for j in range(len(self.vehicle_boxes_object_list)):
-                        if self.KP[i, j] != 0:
-                            appearance_similarity = 0
-                            if image_list is not None:
-                                appearance_similarity = cal_appearance_similarity(crop_image_with_box2d(image_list[0], infra_bbox_object.get_bbox2d_4()), crop_image_with_box2d(image_list[1], vehicle_bbox_object.get_bbox2d_4()))
-                            self.KP[i, j] += int(appearance_similarity * 10)
+            if 'appearance' in similarity_strategy:
+                if 0 < max_matches_num < 2:
+                    self.KP += similarity_utils.cal_appearance_KP(self.infra_boxes_object_list, self.vehicle_boxes_object_list, image_list=image_list)
 
         cal_KP()
 
@@ -108,9 +62,6 @@ class BoxesMatch():
 
     def get_KP(self):
         return self.KP
-
-    def get_max_matches_num(self):
-        return self.matches_avg_num
 
     def get_matches(self):
         return self.matches
@@ -161,10 +112,10 @@ class BoxesMatch():
                 
         cnt = len(self.result_matches)
 
-        cnt, total_matches_cnt, total_cnt =  cnt, len(self.total_matches), len(matched_infra_bboxes_object_list)
+        cnt, total_matches_cnt, given_matches_num =  cnt, len(self.total_matches), len(matches)
 
         if self.verbose:
-            print('true result matches / true matches / total: {} / {} / {}'.format(cnt, total_matches_cnt, total_cnt))
+            print('true result matches / true matches / total: {} / {} / {}'.format(cnt, total_matches_cnt, given_matches_num))
             print('Accuracy(true result matches / true matches): ', cnt / total_matches_cnt) if total_matches_cnt > 0 else print('Accuracy(true result matches / true matches): ', 0)
 
             infra_result_matches_types_list, vehicle_result_matches_types_list = self.get_matches_types(self.result_matches)
@@ -181,7 +132,7 @@ class BoxesMatch():
             print('infra_missing_matches_types_list: ', infra_missing_matches_types_list)
             print('vehicle_missing_matches_types_list: ', vehicle_missing_matches_types_list)
 
-        return cnt, total_matches_cnt, total_cnt
+        return cnt, total_matches_cnt, given_matches_num
     
     def get_matches_types(self, matches):
         infra_result_matches_types = []
@@ -301,108 +252,6 @@ def batching_test_boxes_match(verbose = False, k = 10):
             json.dump(error_matches_list, f)
 
 
-def batching_test_matches_score(verbose = False, k = 15):
-    reader = CooperativeBatchingReader('config.yml')
-    cnt = 0 
-
-    KP_score_list = {}
-    matches_score_list = {}
-
-    for infra_file_name, vehicle_file_name, infra_boxes_object_list, vehicle_boxes_object_list, T_infra2vehicle in reader.generate_infra_vehicle_bboxes_object_list():
-        if cnt >= 100:
-            break
-
-        if verbose:
-            print('infra: {}   vehicle: {}'.format(infra_file_name, vehicle_file_name))
-            print('infra_boxes_object_list: ', len(infra_boxes_object_list))
-            print('vehicle_boxes_object_list: ', len(vehicle_boxes_object_list))
-
-        filtered_infra_boxes_object_list = Filter3dBoxes(infra_boxes_object_list).filter_according_to_size_topK(k)
-        filtered_vehicle_boxes_object_list = Filter3dBoxes(vehicle_boxes_object_list).filter_according_to_size_topK(k)
-
-        boxes_matcher = BoxesMatch(filtered_infra_boxes_object_list, filtered_vehicle_boxes_object_list, T_infra2vehicle, verbose)
-
-        KP = boxes_matcher.get_KP()
-        matches_with_score_list = boxes_matcher.get_matches_with_score()
-
-        KP_score_list_part = {}
-        matches_score_list_part = {} 
-
-        for i in range(KP.shape[0]):
-            for j in range(KP.shape[1]):
-                if KP[i, j] != 0:
-                    if KP[i, j] not in KP_score_list_part:
-                        KP_score_list_part[KP[i, j]] = 1
-                    else:
-                        KP_score_list_part[KP[i, j]] += 1
-
-        sorted_KP_score_list_part = sorted(KP_score_list_part.items(), key=lambda x: x[0])
-        for KP_score_with_cnt in sorted_KP_score_list_part:
-            # if KP_score_with_cnt[0] > 100:
-            #     break
-            if KP_score_with_cnt[0] not in KP_score_list:
-                KP_score_list[KP_score_with_cnt[0]] = KP_score_with_cnt[1]
-            else:
-                KP_score_list[KP_score_with_cnt[0]] += KP_score_with_cnt[1]
-
-        for matches_with_score in matches_with_score_list:
-            if matches_with_score[1] not in matches_score_list_part:
-                matches_score_list_part[matches_with_score[1]] = 1
-            else:
-                matches_score_list_part[matches_with_score[1]] += 1
-
-        sorted_matches_score_list_part = sorted(matches_score_list_part.items(), key=lambda x: x[0])
-        for matches_score_with_cnt in sorted_matches_score_list_part:
-            # if matches_score_with_cnt[0] > 100:
-            #     break
-            if matches_score_with_cnt[0] not in matches_score_list:
-                matches_score_list[matches_score_with_cnt[0]] = matches_score_with_cnt[1]
-            else:
-                matches_score_list[matches_score_with_cnt[0]] += matches_score_with_cnt[1]
-
-        cnt += 1
-        print(cnt)
-
-        if verbose:
-            print('len(KP_score_list_part): ', len(KP_score_list_part))
-            print('sorted_KP_score_list_part: ', sorted_KP_score_list_part)
-            print('len(matches_score_list_part): ', len(matches_score_list_part))
-            print('sorted_matches_score_list_part: ', sorted_matches_score_list_part)
-            print('---------------------------------')
-
-    sorted_KP_score_list = sorted(KP_score_list.items(), key=lambda x: x[0])
-    sorted_matches_score_list = sorted(matches_score_list.items(), key=lambda x: x[0])
-
-    if verbose:
-        print('------final-----------')
-        print('KP_score_list: ', sorted_KP_score_list)
-        print('matches_score_list: ', sorted_matches_score_list)
-
-    # draw boxplot
-    import matplotlib.pyplot as plt
-    # Splitting the tuples into two lists
-    scores, counts = zip(*sorted_KP_score_list)
-    # Creating the plot
-    plt.figure()
-    plt.scatter(scores, counts, color='blue') # Scatter plot to show the distribution
-    plt.plot(scores, counts, color='red', linestyle='dashed') # Line plot to show the trend
-    plt.title(f'Distribution of Scores and their Counts of KP score , len:{len(scores)}')
-    plt.xlabel('Score')
-    plt.ylabel('Count')
-    plt.grid(True)
-
-    # Splitting the tuples into two lists
-    scores, counts = zip(*sorted_matches_score_list)
-    # Creating the plot
-    plt.figure()
-    plt.scatter(scores, counts, color='blue') # Scatter plot to show the distribution
-    plt.plot(scores, counts, color='red', linestyle='dashed') # Line plot to show the trend
-    plt.title(f'Distribution of Scores and their Counts of matches score , len:{len(scores)}')
-    plt.xlabel('Score')
-    plt.ylabel('Count')
-    plt.grid(True)
-    plt.show()
-
 
 def test_get_matches_with_score(infra_bboxes_object_list, vehicle_bboxes_object_list):
     boxes_matcher = BoxesMatch(infra_bboxes_object_list, vehicle_bboxes_object_list)
@@ -412,15 +261,8 @@ def test_get_matches_with_score(infra_bboxes_object_list, vehicle_bboxes_object_
         print('match: ', match[0])
         print('score: ', match[1])
     
-
-
-if __name__ == "__main__":
-    # specific_test_boxes_match('007489', '000289', k=15)
-    # batching_test_boxes_match(verbose=True, k=15)
-    # batching_test_matches_score(verbose=True, k=15)
-
-    # infra_bboxes_object_list, vehicle_bboxes_object_list = CooperativeReader('007038', '000546').get_cooperative_infra_vehicle_boxes_object_list_predicted()
-    cooperative_reader = CooperativeReader('007038', '000546')
+def visualize_score_of_candidate_extrinsics(infra_id = '007038', vehicle_id = '000546'):
+    cooperative_reader = CooperativeReader(infra_id, vehicle_id)
     infra_bboxes_object_list, vehicle_bboxes_object_list = cooperative_reader.get_cooperative_infra_vehicle_boxes_object_list()
     T_true_6DOF = convert_T_to_6DOF(cooperative_reader.get_cooperative_T_i2v())
     print('T_true: ', T_true_6DOF)
@@ -435,3 +277,7 @@ if __name__ == "__main__":
         print('T_6DOF: ', T_6DOF)
         print('score: ', score)
         print('------------------------------------')
+
+
+if __name__ == "__main__":
+    1 == 1

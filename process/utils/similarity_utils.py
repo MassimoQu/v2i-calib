@@ -8,6 +8,78 @@ from IoU_utils import cal_3dIoU
 from bbox_utils import get_lwh_from_bbox3d_8_3, get_bbox3d_8_3_from_xyz_lwh, get_vector_between_bbox3d_8_3, get_length_between_bbox3d_8_3
 from appearance_similarity import cal_appearance_similarity
 from BBoxVisualizer_open3d import BBoxVisualizer_open3d as BBoxVisualizer
+from CorrespondingDetector import CorrespondingDetector
+from extrinsic_utils import get_time_judge, implement_T_3dbox_object_list, get_extrinsic_from_two_3dbox_object, convert_T_to_6DOF
+from appearance_similarity import cal_appearance_similarity
+
+def normalized_KP(KP):
+    if KP.shape[0] > 0 and KP.shape[1] > 0:
+        max_val = np.max(KP)
+        min_val = np.min(KP)
+        for i in range(KP.shape[0]):
+            for j in range(KP.shape[1]):
+                if KP[i, j] != 0:
+                    KP[i, j] = int((KP[i, j] - min_val) / (max_val - min_val) * 10)
+    return KP
+
+def cal_core_KP(infra_object_list, vehicle_object_list, category_flag = True):
+    max_matches_num = -1
+    KP = np.zeros((len(infra_object_list), len(vehicle_object_list)), dtype=np.float64)
+    for i, infra_bbox_object in enumerate(infra_object_list):
+        for j, vehicle_bbox_object in enumerate(vehicle_object_list):
+            if category_flag:
+                if infra_bbox_object.get_bbox_type() != vehicle_bbox_object.get_bbox_type():
+                    continue
+            T = get_extrinsic_from_two_3dbox_object(infra_bbox_object, vehicle_bbox_object)
+            converted_infra_boxes_object_list = implement_T_3dbox_object_list(T, infra_object_list)
+            corresponding_detector = CorrespondingDetector(converted_infra_boxes_object_list, vehicle_object_list)
+            KP[i, j] = int(corresponding_detector.get_Yscore() * 100) * infra_bbox_object.get_confidence() * vehicle_bbox_object.get_confidence()
+            if max_matches_num < corresponding_detector.get_matched_num():
+                max_matches_num = corresponding_detector.get_matched_num()
+    return normalized_KP(KP), max_matches_num
+
+def cal_other_edge_KP(infra_object_list, vehicle_object_list, category_flag = True, similarity_strategy = 'length'):
+    KP = np.zeros((len(infra_object_list), len(vehicle_object_list)), dtype=np.float64)
+    for i, infra_bbox_object in enumerate(infra_object_list):
+        for j, vehicle_bbox_object in enumerate(vehicle_object_list):
+            if category_flag:
+                if infra_bbox_object.get_bbox_type() != vehicle_bbox_object.get_bbox_type():
+                    continue
+            KP[i, j] = int(cal_similarity_knn(infra_object_list, i, vehicle_object_list, j, similarity_strategy=similarity_strategy))
+    return normalized_KP(KP)
+
+def cal_other_vertex_KP(infra_object_list, vehicle_object_list, category_flag = True, similarity_strategy = 'size'):
+    KP = np.zeros((len(infra_object_list), len(vehicle_object_list)), dtype=np.float64)
+    for i, infra_bbox_object in enumerate(infra_object_list):
+        for j, vehicle_bbox_object in enumerate(vehicle_object_list):
+            if category_flag:
+                if infra_bbox_object.get_bbox_type() != vehicle_bbox_object.get_bbox_type():
+                    continue
+            if similarity_strategy == 'size':
+                similarity = int(cal_similarity_size(infra_bbox_object.get_bbox3d_8_3(), vehicle_bbox_object.get_bbox3d_8_3()))
+            else:
+                raise ValueError('similarity_strategy should be size')
+            KP[i, j] = similarity
+    return normalized_KP(KP)
+
+
+def crop_image_with_box2d(image, box2d):
+    x1, y1, x2, y2 = box2d
+    # print('x1, y1, x2, y2: ', x1, y1, x2, y2)
+    # cv2.imshow('image', image)
+    # cv2.waitKey(0)
+    x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
+    return image[y1:y2, x1:x2]
+
+def cal_appearance_KP(infra_object_list, vehicle_object_list, image_list):
+    KP = np.zeros((len(infra_object_list), len(vehicle_object_list)), dtype=np.float64)
+    for i, infra_bbox_object in enumerate(infra_object_list):
+        for j, vehicle_bbox_object in enumerate(vehicle_object_list):
+            if infra_bbox_object.get_bbox_type() != vehicle_bbox_object.get_bbox_type():
+                continue
+            KP[i, j] = int(cal_appearance_similarity(crop_image_with_box2d(image_list[0], infra_bbox_object.get_bbox2d_4()), crop_image_with_box2d(image_list[1], vehicle_bbox_object.get_bbox2d_4())))
+    return normalized_KP(KP)
+
 
 
 def cal_similarity_size(infra_bbox_8_3, vehicle_bbox_8_3):
@@ -26,7 +98,6 @@ def cal_similarity_size(infra_bbox_8_3, vehicle_bbox_8_3):
     BBoxVisualizer().plot_boxes_8_3_list([infra_box, vehicle_box], [(1, 0, 0), (0, 1, 0)])
 
     return similarity_size
-
 
 def cal_similarity_angle(infra_bbox_2_8_3, vehicle_bbox_2_8_3):
     # 计算两个边的中心点
@@ -51,8 +122,8 @@ def cal_similarity_angle(infra_bbox_2_8_3, vehicle_bbox_2_8_3):
     
 
     # if similarity_angle == n
-    return np.abs(similarity_angle)
-
+    # return np.abs(similarity_angle)
+    return similarity_angle
 
 def cal_similarity_length(infra_bbox_2_8_3, vehicle_bbox_2_8_3):
     '''
@@ -75,7 +146,6 @@ def cal_similarity_length(infra_bbox_2_8_3, vehicle_bbox_2_8_3):
             # print('vehicle_bbox_2_8_3[0]:', vehicle_bbox_2_8_3[0])
             # print('vehicle_bbox_2_8_3[1]:', vehicle_bbox_2_8_3[1])
 
-
     return similarity_length
 
 
@@ -93,7 +163,7 @@ def get_KNN_points(box_object_list, index, k):
     pair_points =  [box_object for box_object in np.array(selected_box_object_list)[sorted_index][:k]]
     return pair_points
 
-
+# similarity += count_knn_similarity(infra_pair_point, infra_object_list[infra_index], vehicle_pair_point, vehicle_object_list[vehicle_index])
 def count_knn_similarity(edge1_point, edge1_start_point, edge2_point, edge2_start_point):
     # length_similar
     length_similar = cal_similarity_length((edge1_start_point.get_bbox3d_8_3(), edge1_point.get_bbox3d_8_3()), (edge2_start_point.get_bbox3d_8_3(), edge2_point.get_bbox3d_8_3()))
@@ -116,8 +186,7 @@ def count_knn_similarity(edge1_point, edge1_start_point, edge2_point, edge2_star
     
     return length_similar #+ angle_similar #+ size_similar
 
-
-def cal_similarity_knn(infra_object_list, infra_index, vehicle_object_list, vehicle_index, k = 0):
+def cal_similarity_knn(infra_object_list, infra_index, vehicle_object_list, vehicle_index, similarity_strategy = 'length', k = 0):
     k_infra, k_vehicle = k, k
 
     if k > len(infra_object_list) - 1:
@@ -133,17 +202,26 @@ def cal_similarity_knn(infra_object_list, infra_index, vehicle_object_list, vehi
     
     # BBoxVisualizer().plot_boxes3d_lists([infra_pair_points, vehicle_pair_points, [infra_object_list[infra_index]], [vehicle_object_list[vehicle_index]]], [(1, 0, 0), (0, 1, 0), (0, 1, 1), (1, 0, 1)])
     
-
     similarity = 0
 
     for infra_pair_point in infra_pair_points:
         for vehicle_pair_point in vehicle_pair_points:
             if infra_pair_point.get_bbox_type() != vehicle_pair_point.get_bbox_type():
                 continue
-            similarity += count_knn_similarity(infra_pair_point, infra_object_list[infra_index], vehicle_pair_point, vehicle_object_list[vehicle_index])
+            infra_pair = (infra_object_list[infra_index].get_bbox3d_8_3(), infra_pair_point.get_bbox3d_8_3())
+            vehicle_pair = (vehicle_object_list[vehicle_index].get_bbox3d_8_3(), vehicle_pair_point.get_bbox3d_8_3())
+            if similarity_strategy == 'length':
+                similar = cal_similarity_length(infra_pair, vehicle_pair)
+            elif similarity_strategy == 'angle':
+                similar = cal_similarity_angle(infra_pair, vehicle_pair)
+
+            if similar < 0.95:
+                similar = 0
+            # similarity += count_knn_similarity(infra_pair_point, infra_object_list[infra_index], vehicle_pair_point, vehicle_object_list[vehicle_index])
+            similarity += similar
 
     return similarity
-    
+
 
 def test_similarity_size(infra_object_list, vehicle_object_list):
     KP = np.zeros((len(infra_object_list), len(vehicle_object_list)), dtype=np.float64)
