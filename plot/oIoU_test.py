@@ -239,8 +239,10 @@ def plot_3d_curve_oIoU_under_trueT_with_bias_different_scene_test(infra_ids, veh
 
 
 # plot_curve_oIoU_under_trueT_with_bias('003920', '020092', 100, 0.1)
-# plot_curve_oIoU_under_trueT_different_scene(1000)
+plot_curve_oIoU_under_trueT_different_scene(300)
 
 # plot_3d_curve_oIoU_under_trueT_with_bias_different_scene(infra_ids=[3920, 7489, 5298], vehicle_ids=[20092, 289, 1374], cnt=10, step=0.1)
 
-plot_3d_curve_oIoU_under_trueT_with_bias_different_scene_test(infra_ids=[3920, 7489, 5298], vehicle_ids=[20092, 289, 1374], cnt=10, step=0.1)
+# plot_3d_curve_oIoU_under_trueT_with_bias_different_scene_test(infra_ids=[3920, 7489, 5298], vehicle_ids=[20092, 289, 1374], cnt=10, step=0.1)
+
+

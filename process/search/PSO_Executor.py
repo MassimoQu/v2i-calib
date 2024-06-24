@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 import sys
 sys.path.append('./reader')
 sys.path.append('./process/search')
-sys.path.append('./process/graph')
 sys.path.append('./process/utils')
 sys.path.append('./process/corresponding')
 from CooperativeReader import CooperativeReader

@@ -7,7 +7,8 @@
         "./process/corresponding",
         "./process/graph",
         "./process/search",
-        "./traditional_registration"
+        "./traditional_registration",
+        "./plot"
     ],
     "files.associations": {
         "cctype": "cpp",

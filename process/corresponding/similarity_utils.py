@@ -22,7 +22,7 @@ def normalized_KP(KP):
                     KP[i, j] = int((KP[i, j] - min_val) / (max_val - min_val) * 10)
     return KP
 
-def cal_core_KP(infra_object_list, vehicle_object_list, category_flag = True):
+def cal_core_KP_IoU(infra_object_list, vehicle_object_list, category_flag = True):
     max_matches_num = -1
     KP = np.zeros((len(infra_object_list), len(vehicle_object_list)), dtype=np.float64)
     for i, infra_bbox_object in enumerate(infra_object_list):
@@ -32,11 +32,28 @@ def cal_core_KP(infra_object_list, vehicle_object_list, category_flag = True):
                     continue
             T = get_extrinsic_from_two_3dbox_object(infra_bbox_object, vehicle_bbox_object)
             converted_infra_boxes_object_list = implement_T_3dbox_object_list(T, infra_object_list)
-            corresponding_detector = CorrespondingDetector(converted_infra_boxes_object_list, vehicle_object_list)
+            corresponding_detector = CorrespondingDetector(converted_infra_boxes_object_list, vehicle_object_list, corresponding_strategy='iou')
             KP[i, j] = int(corresponding_detector.get_Yscore() * 100) * infra_bbox_object.get_confidence() * vehicle_bbox_object.get_confidence()
             if max_matches_num < corresponding_detector.get_matched_num():
                 max_matches_num = corresponding_detector.get_matched_num()
     return normalized_KP(KP), max_matches_num
+
+def cal_core_KP_distance(infra_object_list, vehicle_object_list, category_flag = True, corresponding_strategy = 'centerpoint_distance'):
+    max_matches_num = -1
+    KP = np.zeros((len(infra_object_list), len(vehicle_object_list)), dtype=np.float64)
+    for i, infra_bbox_object in enumerate(infra_object_list):
+        for j, vehicle_bbox_object in enumerate(vehicle_object_list):
+            if category_flag:
+                if infra_bbox_object.get_bbox_type() != vehicle_bbox_object.get_bbox_type():
+                    continue
+            T = get_extrinsic_from_two_3dbox_object(infra_bbox_object, vehicle_bbox_object)
+            converted_infra_boxes_object_list = implement_T_3dbox_object_list(T, infra_object_list)
+            corresponding_detector = CorrespondingDetector(converted_infra_boxes_object_list, vehicle_object_list, corresponding_strategy=corresponding_strategy)
+            KP[i, j] = int(corresponding_detector.get_Yscore() ) * infra_bbox_object.get_confidence() * vehicle_bbox_object.get_confidence() * 2
+            if max_matches_num < corresponding_detector.get_matched_num():
+                max_matches_num = corresponding_detector.get_matched_num()
+    # return normalized_KP(KP), max_matches_num
+    return KP, max_matches_num
 
 def cal_other_edge_KP(infra_object_list, vehicle_object_list, category_flag = True, similarity_strategy = 'length'):
     KP = np.zeros((len(infra_object_list), len(vehicle_object_list)), dtype=np.float64)

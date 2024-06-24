@@ -2,12 +2,22 @@ import numpy as np
 import sys
 sys.path.append('./reader')
 sys.path.append('./visualize')
+sys.path.append('./corresponding')
 from CooperativeReader import CooperativeReader
+from CorrespondingDetector import CorrespondingDetector
+
 
 class Filter3dBoxes():
     def __init__(self, boxes_object_list=None):
         self.boxes_object_list = boxes_object_list
 
+    def filter_dynamic_object_using_last_frame(self, last_frame_boxes_object_list, interval_distance = 1):
+        filtered_boxes_object_list = []
+        matches_with_distance = CorrespondingDetector(self.boxes_object_list, last_frame_boxes_object_list).get_matches_with_score()
+        for match, distance in matches_with_distance.items():
+            if distance > -interval_distance:
+                filtered_boxes_object_list.append(self.boxes_object_list[match[0]])
+        return filtered_boxes_object_list
 
     def filter_according_to_topK_confidence(self, confidence_threshold = 0.8, k = 15):
         # 筛选出置信度大于阈值的检测框

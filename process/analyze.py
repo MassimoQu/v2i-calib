@@ -10,7 +10,6 @@ import json
 import sys
 # sys.path.append('./reader')
 # sys.path.append('./process')
-# sys.path.append('./process/graph')
 # sys.path.append('./process/corresponding')
 sys.path.append('./process/utils')
 # sys.path.append('./process/search')
@@ -100,6 +99,9 @@ def devide_group_according_scene_difficulty(total_cnt = 650, k = 15, folder_name
         print(f'hard_success_cnt: {hard_success_cnt}, hard_success_rate: {hard_success_cnt / len(medium_group)}')
     # print(f'easy_group / total_cnt: {len(easy_group) / total_cnt}, medium_group / total_cnt: {len(medium_group) / total_cnt}, hard_group / total_cnt: {len(hard_group) / total_cnt}, extreme_group / total_cnt: {len(extreme_group) / total_cnt}, invalid_group / total_cnt: {len(invalid_group) / total_cnt}, no_common_group / total_cnt: {len(no_common_group) / total_cnt}')
     # print(f'easy_group / (valid + valid_bad): {(len(easy_group) / (valid_cnt + valid_bad_cnt))}, medium_group / (valid + valid_bad): {(len(medium_group) / (valid_cnt + valid_bad_cnt))}, hard_group / (valid + valid_bad): {(len(hard_group) / (valid_cnt + valid_bad_cnt))}')
+
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
 
     if len(easy_group):
         with open(os.path.join(output_folder, f'easy_group_k{k}_totalcnt{total_cnt}.json'), 'w') as f:
@@ -768,14 +770,296 @@ def plot_violin_plot(data, title, x_label, y_label, save_path = None):
     plt.show()
 
 
-# if __name__ == "__main__":
+
+# 不同策略对比
+def get_pair_label(data_folder, total_cnt = 650, k = 15):
+    labels = ['valid', 'valid_bad', 'invalid', 'no_common']
+
+    pair_label_dict = {}
+    pair_content_dict = {}
+    extra_key_content_dict = {}
+
+    for cnt in range(50, total_cnt + 1, 50):
+        for label in labels:
+            file_name = label + '_extrinsic_k' + str(k) + '_cnt' + str(cnt) + '.json'
+            if os.path.exists(data_folder + file_name) == False:
+                continue
+
+            with open(data_folder + file_name, 'r') as f:
+                example_list = json.load(f)
+
+            for example in example_list:
+                
+                infra_id = example['infra_file_name']
+                vehicle_id = example['vehicle_file_name']
+
+                pair_label_dict[(infra_id, vehicle_id)] = label
+
+                key = ['result_matched_cnt',  'stability', 'RE', 'TE']
+                key_content = {k: example[k] for k in key if k in example.keys()}
+
+                extra_key = ['filtered_available_matches_cnt', 'total_available_matches_cnt']
+                extra_key_content = {k: example[k] for k in extra_key}
+
+                pair_content_dict[(infra_id, vehicle_id)] = key_content
+                extra_key_content_dict[(infra_id, vehicle_id)] = extra_key_content
+                
+
+    return pair_label_dict, pair_content_dict, extra_key_content_dict
+
+
+def save_pair_with_different_effect(true_match_result_data_folder, data_folder, output_folder, total_cnt = 650, k = 15):
+
+    pair_label_dict, pair_content_dict, extra_key_content_dict = get_pair_label(data_folder, total_cnt, k)
+
+    true_match_pair_label_dict, true_match_pair_content_dict, _ = get_pair_label(true_match_result_data_folder, total_cnt, k)
+
+    pair_with_different_effect_list = []
+
+    for pair, label in pair_label_dict.items():
+        if pair in true_match_pair_label_dict.keys():
+            if true_match_pair_label_dict[pair] != label:
+                pair_with_different_effect_content = {}
+                pair_with_different_effect_content['pair'] = list(pair)
+                pair_with_different_effect_content['result_label'] = label
+                pair_with_different_effect_content['true_match_label'] = true_match_pair_label_dict[pair]
+                pair_with_different_effect_content['true_match_result_content'] = true_match_pair_content_dict[pair]
+                pair_with_different_effect_content['result_content'] = pair_content_dict[pair]
+                pair_with_different_effect_content['available_matches_cnt'] = extra_key_content_dict[pair]
+                pair_with_different_effect_list.append(pair_with_different_effect_content)
+
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
+
+    with open(output_folder + 'pair_with_different_effect.json', 'w') as f:
+        json.dump(pair_with_different_effect_list, f)
+
+
+def analyze_pair_with_different_effect_json(true_match_folder_name, data_folder_name, output_folder_name):
+    # 分析不同方法对比中不同匹配对的变化情况
+    total_num = 6600
+    true_match_result_data_folder = fr'new_clean_result/{true_match_folder_name}/all_dataset/'
+    data_folder = fr'new_clean_result/{data_folder_name}/all_dataset/'
+    output_folder = fr'new_clean_result/analyze/{output_folder_name}/'
+    save_pair_with_different_effect(true_match_result_data_folder, data_folder, output_folder, total_cnt = total_num, k = 15)
+
+    pairs_path = fr'{output_folder}pair_with_different_effect.json'
+
+    with open(pairs_path, 'r') as f:
+        pair_with_different_effect_list = json.load(f)
+        combination_content_list_dict = {}
+        for pair_with_different_effect in pair_with_different_effect_list:
+            result_label = pair_with_different_effect['result_label']
+            true_match_label = pair_with_different_effect['true_match_label']
+            combination = (result_label, true_match_label)
+            if combination not in combination_content_list_dict.keys():
+                combination_content_list_dict[combination] = []
+            combination_content_list_dict[combination].append(pair_with_different_effect)
+
+    keys = ['valid2valid_bad', 'valid_bad2valid', 'invalid2valid_bad', 'invalid2valid']
+
+    print('len(pair_with_different_effect_list):', len(pair_with_different_effect_list))
+
+    # save
+    # for key in keys:
+    #     combination = tuple(key.split('2'))
+    #     print(f'{key} group: {len(combination_content_list_dict[combination])}')
+    #     with open(output_folder + key + '.json', 'w') as f:
+    #         json.dump(combination_content_list_dict[combination], f)
+
+    # 初始化一个字典来存储不同 key 的稳定性分布
+    stability_distribution_dict = {key: {} for key in keys}
+
+    for key in keys:
+        combination = tuple(key.split('2'))
+        for pair in combination_content_list_dict[combination]:
+            stability = pair['result_content']['stability']
+            if stability not in stability_distribution_dict[key]:
+                stability_distribution_dict[key][stability] = 0
+            stability_distribution_dict[key][stability] += 1
+
+    # print(sorted(stability_distribution_dict.items(), key=lambda x: x[0]))
+
+    # 获取所有可能的 stability 值
+    all_stabilities = sorted(set(stability for dist in stability_distribution_dict.values() for stability in dist.keys()))
+
+    # 准备数据以便绘制堆叠柱状图
+    stacked_data = {key: [stability_distribution_dict[key].get(stability, 0) for stability in all_stabilities] for key in keys}
+
+    # 绘制堆叠柱状图
+    plt.figure(figsize=(10, 6))
+    bottom = [0] * len(all_stabilities)
+
+    for key in keys:
+        plt.bar(all_stabilities, stacked_data[key], bottom=bottom, label=key)
+        bottom = [i + j for i, j in zip(bottom, stacked_data[key])]
+
+    plt.xlabel('Stability')
+    plt.ylabel('Count')
+    plt.title('Stability Distribution for Different Keys')
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+
+def get_high_stability_pairs(data_folder_name, output_folder_name, total_cnt = 650, k = 15):
+
+    data_folder = fr'new_clean_result/{data_folder_name}/all_dataset/'
+    output_folder = fr'new_clean_result/analyze/{output_folder_name}/'
+
+    high_stability_pairs = []
+
+    for cnt in range(50, total_cnt + 1, 50):
+        file_name = f'valid_bad_extrinsic_k{k}_cnt{cnt}.json'
+        if os.path.exists(data_folder + file_name) == False:
+            continue
+        
+        with open(data_folder + file_name, 'r') as f:
+            example_list = json.load(f)
+
+        for example in example_list:
+            infra_id = example['infra_file_name']
+            vehicle_id = example['vehicle_file_name']
+            pair = (infra_id, vehicle_id)
+            if example['stability'] >= 3:
+                high_stability_pairs.append(example)
+
+    print('len(high_stability_pairs):', len(high_stability_pairs))
+
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
+
+    with open(output_folder + 'valid_bad_high_stability_pairs.json', 'w') as f:
+        json.dump(high_stability_pairs, f)
+
+
+
+def print_avg_RE_TE_time_cost(example_list, title):
+    RE_list = [example['RE'] for example in example_list]
+    TE_list = [example['TE'] for example in example_list]
+    time_cost_list = [example['cost_time'] for example in example_list]
+    RE_mean = sum(RE_list) / len(RE_list)
+    TE_mean = sum(TE_list) / len(TE_list)
+    time_cost_mean = sum(time_cost_list) / len(time_cost_list)
+    print(f'{title} RE_mean: {RE_mean}, TE_mean: {TE_mean}, time_cost_mean: {time_cost_mean}')
+
+
+def devide_group_according_scene_difficulty(stability_threshold = 5, total_cnt = 650, k = 15, folder_name = r'intermediate_output/', output_folder = r'intermediate_output/111/', print_stability = False):
+
+    # folder_name = r'intermediate_output/extrinsic_test/'
+    # file_name_list = ['invalid_extrinsic_k15_cnt', 'no_common_view_k15_cnt', 'valid_extrinsic_k15_cnt', 'valid_bad_extrinsic_k15_cnt']
+
+    file_name_list = ['valid_extrinsic_k' + str(k) + '_cnt', 'valid_bad_extrinsic_k' + str(k) + '_cnt', 'invalid_extrinsic_k' + str(k) + '_cnt', 'no_common_view_k' + str(k) + '_cnt']
+    
+    valid_cnt = 0
+    success_cnt = 0
+    valid_bad_cnt = 0
+    invalid_cnt = 0
+    no_common_cnt = 0
+
+    easy_group = [] # RE < 1, TE < 1 -> valid
+    medium_group = [] # 1 <= RE <= 5, 1 <= TE <= 5 -> valid + valid_bad
+    hard_group = [] # 5 < RE < 10 or 5 < TE < 10 -> valid_bad
+    extreme_group = [] # RE > 10 or TE > 10 -> invalid
+    invalid_group = [] # invalid
+    no_common_group = [] # no_common
+
+    stability_cnt = {}
+
+    for cnt in range(50, total_cnt + 1, 50):
+        for file_name in file_name_list:
+            if os.path.exists(folder_name + file_name + str(cnt) + '.json') == False:
+                continue
+
+            with open(folder_name + file_name + str(cnt) + '.json', 'r') as f:
+                example_list = json.load(f)
+            
+            if file_name == file_name_list[0] or file_name == file_name_list[1]:
+                
+                # for example in example_list:
+                #     if example['RE'] < 1 and example['TE'] < 1:
+                #         easy_group.append(example)
+                #     elif example['RE'] <= 5 and example['TE'] <= 5:
+                #         medium_group.append(example)
+                #     elif example['RE'] <= 10 and example['TE'] <= 10:
+                #         hard_group.append(example)
+                #     else:
+                #         extreme_group.append(example)
+
+                for example in example_list:
+
+                    stability_cnt[example['stability']] = stability_cnt.get(example['stability'], 0) + 1
+
+                    if example['stability'] < stability_threshold:
+                        continue
+
+                    if example['RE'] < 1 and example['TE'] < 1:
+                        success_cnt += 1
+                        easy_group.append(example)
+                    elif example['RE'] < 2 and example['TE'] < 2:
+                        success_cnt += 1
+                        medium_group.append(example)
+                    elif example['RE'] < 5 and example['TE'] < 5:
+                        hard_group.append(example)
+                    else:
+                        extreme_group.append(example)
+
+                if file_name == file_name_list[0]:
+                    valid_cnt += len(example_list)
+                                
+                elif file_name == file_name_list[1]:
+                    valid_bad_cnt += len(example_list)
+
+            if file_name == file_name_list[2] :
+                invalid_cnt += len(example_list)
+                invalid_group += example_list
+
+            elif file_name == file_name_list[3]:
+                no_common_cnt += len(example_list)
+                no_common_group += example_list
+
+    # print(f'total: {total_cnt}, valid_cnt: {valid_cnt}, valid_bad_cnt: {valid_bad_cnt}, invalid_cnt: {invalid_cnt}, no_common_cnt: {no_common_cnt}')
+    
+    if print_stability:
+        print(stability_cnt)
+    print(f'total: {total_cnt}, easy_group(RE,TE<1): {len(easy_group)}, medium_group(1<=RE,TE<2): {len(medium_group)}, hard_group(2<=RE,TE<5): {len(hard_group)}, extreme_group(RE,TE>5): {len(extreme_group)}, invalid_group: {len(invalid_group)}, no_common_group: {len(no_common_group)}')
+
+
+    print_avg_RE_TE_time_cost(easy_group, '(RE,TE<1)')
+    print_avg_RE_TE_time_cost(easy_group+medium_group, '(RE,TE<2)')
+    print_avg_RE_TE_time_cost(easy_group+medium_group+hard_group, '(RE,TE<5)')
+
+    print(f'success rate(TE,RE<1):{len(easy_group)/total_cnt}, success rate(TE,RE<2):{ success_cnt / total_cnt}, success rate(TE,RE<5):{(len(easy_group)+len(medium_group)+len(hard_group))/total_cnt}')
+
+
+
+if __name__ == "__main__":
     # analyze_bad_test()
 
     # count_test_result()
+    
+    total_num = 6600
+    
+    # data_folder = r'new_clean_result/extrinsic_category_core_centerpoint_distance_vertex_distance_svd8point_threshold/common_boxes_filtered_dataset/'
+    # intermediate_folder = r'new_clean_result/extrinsic_category_core_centerpoint_distance_vertex_distance_svd8point_threshold/common_boxes_filtered_dataset/analyze/'
 
-    # total_num = 500
-    # data_folder = r'new_clean_result/extrinsic_core_category_svd_trueT/easy_dataset/'
-    # intermediate_folder = r'intermediate_output/VIPS-matches_threshold_filter/easy_dataset/group/'
+    # data_folder = r'new_clean_result/extrinsic_category_core_centerpoint_distance_vertex_distance_svd8point_top matches/common_boxes_filtered_dataset/'
+    # intermediate_folder = r'new_clean_result/extrinsic_category_core_centerpoint_distance_vertex_distance_svd8point_top matches/common_boxes_filtered_dataset/analyze/'
+
+    data_folder = r'new_clean_result/extrinsic_category_core_centerpoint_distance_vertex_distance_svd8point_threshold/all_dataset/'
+    intermediate_folder = r'new_clean_result/extrinsic_category_core_centerpoint_distance_vertex_distance_svd8point_threshold/all_dataset/analyze/'
+
+    # data_folder = r'new_clean_result/extrinsic_category_core_centerpoint_distance_vertex_distance_svd8point_threshold/all_dataset/'
+    # intermediate_folder = r'new_clean_result/extrinsic_category_core_centerpoint_distance_vertex_distance_svd8point_threshold/all_dataset/analyze/'
+
+
+    if not os.path.exists(intermediate_folder):
+        os.makedirs(intermediate_folder)
+
+
+    for threshold in range(0, 20, 4):
+        print('threshold:', threshold)
+        devide_group_according_scene_difficulty(stability_threshold = threshold, total_cnt = total_num, k = 15, folder_name = data_folder, output_folder = intermediate_folder, print_stability=(threshold==0))
+        print('-----------------------------------')
 
     # devide_group_according_scene_difficulty(total_cnt = total_num, k = 15, folder_name = data_folder, output_folder = intermediate_folder)
 
@@ -788,3 +1072,74 @@ def plot_violin_plot(data, title, x_label, y_label, save_path = None):
     # count_pointcloud_based_result_according_difficulty(total_cnt = total_num, k = 15, folder_name = data_folder)
 
     # count_matches_num_according_to_scene_difficulty(total_num, visualize=True)
+
+
+
+    # true_match_folder_name = 'extrinsic_true_matches_distancecorresponding_svd8point_all'
+    # data_folder_name = 'extrinsic_category_core_distancecorresponding_svd8point_all'
+    # output_folder_name = 'distancecorresponding_svd8point_all_true_matches_comparison'
+
+    # true_match_folder_name = 'extrinsic_true_matches_distancecorresponding_svd8point_threshold'
+    # data_folder_name = 'extrinsic_category_core_distancecorresponding_svd8point_threshold'
+    # output_folder_name = 'distancecorresponding_svd8point_threshold_true_matches_comparison'
+
+    # # # 分析不同方法对比中不同匹配对的变化情况
+    # analyze_pair_with_different_effect_json(true_match_folder_name, data_folder_name, output_folder_name)
+
+    # get_high_stability_pairs(data_folder_name, output_folder_name, total_cnt = 6600, k = 15)    
+    
+    # pairs_path = fr'new_clean_result/analyze/{output_folder_name}/valid_bad2valid.json'
+
+    # with open(pairs_path, 'r') as f:
+    #     valid_bad2valid_list = json.load(f)
+    #     high_stability_list = []
+    #     # mid_stability_list = []
+    #     low_stability_list = []
+    #     for pair in valid_bad2valid_list:
+    #         if pair['result_content']['stability'] <= 3:
+    #             low_stability_list.append(pair)
+    #         # elif pair['true_match_result_content']['stability'] <= 3:
+    #         #     mid_stability_list.append(pair)
+    #         else:
+    #             high_stability_list.append(pair)
+            
+    # # keys = ['low_stability', 'high_stability']
+    # # for key in keys:
+    # #     with open(pairs_path.replace('.json', f'_{key}.json'), 'w') as f:
+    # #         if key == 'low_stability':
+    # #             json.dump(low_stability_list, f)
+    # #         elif key == 'high_stability':
+    # #             json.dump(high_stability_list, f)
+
+    # high_stability_distribution_cnt = {}
+    # low_stability_distribution_cnt = {}
+
+    # for pair in high_stability_list:
+    #     stability = pair['result_content']['stability']
+    #     if stability not in high_stability_distribution_cnt.keys():
+    #         high_stability_distribution_cnt[stability] = 0
+    #     high_stability_distribution_cnt[stability] += 1    
+    # high_stability_distribution_cnt = sorted(high_stability_distribution_cnt.items(), key=lambda x: x[0])
+
+    # for pair in low_stability_list:
+    #     stability = pair['result_content']['stability']
+    #     if stability not in low_stability_distribution_cnt.keys():
+    #         low_stability_distribution_cnt[stability] = 0
+    #     low_stability_distribution_cnt[stability] += 1
+    # low_stability_distribution_cnt = sorted(low_stability_distribution_cnt.items(), key=lambda x: x[0])
+
+    # print('len(high_stability_list):', len(high_stability_list))
+    # print('high_stability_distribution_cnt:', high_stability_distribution_cnt)
+    # print('len(low_stability_list):', len(low_stability_list))
+    # print('low_stability_distribution_cnt:', low_stability_distribution_cnt)
+
+    # import matplotlib.pyplot as plt
+    # plt.figure(figsize=(5, 5))
+    # plt.bar([str(i[0]) for i in low_stability_distribution_cnt], [i[1] for i in low_stability_distribution_cnt], label='low_stability')
+    # plt.bar([str(i[0]) for i in high_stability_distribution_cnt], [i[1] for i in high_stability_distribution_cnt], label='high_stability')
+    # plt.legend()
+    # plt.xlabel('stability')
+    # plt.ylabel('cnt')
+    # plt.title('valid_bad2valid')
+    # plt.grid(True)
+    # plt.show()

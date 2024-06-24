@@ -33,6 +33,9 @@ class BBox:
     def get_confidence(self):
         return self.confidence
 
+    def set_confidence(self, confidence):
+        self.confidence = confidence
+
     def copy(self):
         return BBox(self.bbox_type, self.occluded_state, self.truncated_state)
     

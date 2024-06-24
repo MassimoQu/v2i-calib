@@ -41,6 +41,9 @@ class InfraReader(Reader):
     def get_infra_pointcloud(self):
         return self.get_pointcloud(self.parse_infra_pointcloud_path())    
     
+    def exist_infra_label(self):
+        return osp.exists(self.parse_infra_label_path())
+
     def get_infra_boxes_object_list(self):
         return self.get_3dbbox_object_list(self.parse_infra_label_path())
     

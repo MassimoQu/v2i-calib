@@ -103,7 +103,7 @@ def visualize_edge_property_similarity_between_category(boxes_object_list1, boxe
 
 def test_length_angle_similarity_within_coupled_scene(infra_file_name, vehicle_file_name):
     infra_boxes_object_list, vehicle_boxes_object_list = CooperativeReader(infra_file_name, vehicle_file_name).get_cooperative_infra_vehicle_boxes_object_lists_vehicle_coordinate()
-    matches = CorrespondingDetector(infra_boxes_object_list, vehicle_boxes_object_list).corresponding_IoU_dict.keys()
+    matches = CorrespondingDetector(infra_boxes_object_list, vehicle_boxes_object_list).get_matches()
     
     infra_boxes_object_list = []
     vehicle_boxes_object_list = []
@@ -152,7 +152,7 @@ def test_length_angle_similarity_within_wide_scene(start_index, end_index):
             break
 
         infra_boxes_object_list, vehicle_boxes_object_list = CooperativeReader(infra_file_name, vehicle_file_name).get_cooperative_infra_vehicle_boxes_object_lists_vehicle_coordinate()
-        matches = CorrespondingDetector(infra_boxes_object_list, vehicle_boxes_object_list).corresponding_IoU_dict.keys()
+        matches = CorrespondingDetector(infra_boxes_object_list, vehicle_boxes_object_list).get_matches()
         
         infra_boxes_object_list = []
         vehicle_boxes_object_list = []

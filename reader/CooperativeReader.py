@@ -36,6 +36,9 @@ class CooperativeReader():
     def get_cooperative_infra_vehicle_boxes_object_list_predicted(self):
         return self.infra_reader.get_infra_boxes_object_list_predicted(), self.vehicle_reader.get_vehicle_boxes_object_list_predicted()
     
+    def get_cooperative_infra_vehicle_boxes_object_list_cooperative_fusioned(self):
+        return self.infra_reader.get_infra_boxes_object_list(), self.vehicle_reader.get_vehicle_boxes_object_list_cooperative_fusioned()
+
     def get_cooperative_infra_vehicle_pointcloud(self):
         return self.infra_reader.get_infra_pointcloud(), self.vehicle_reader.get_vehicle_pointcloud()
     

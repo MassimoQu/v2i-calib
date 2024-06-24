@@ -53,7 +53,7 @@ def get_test_result(k = 15, total_cnt = 650, folder_name = r'intermediate_output
         print(f'{key} mean: {sum(list_dict[key]) / len(list_dict[key])}', end='  ')
     print(f'success_rate: {success_rates}')
     print('----------------------------------------')
-                
+    
     return success_rates - 0.05, list_dict
 
 
@@ -184,7 +184,8 @@ def improved_violin_and_box_and_line_plot(df, success_rate_df, key_list=['RE', '
 
 difficulty = ['easy', 'hard']
 # test_group_list = ['extrinsic_angle_category_svd_trueT', 'extrinsic_core_appearance_category_svd_trueT', 'extrinsic_core_category_svd_trueT', 'extrinsic_core_svd_trueT', 'extrinsic_length_angle_category_svd_trueT', 'extrinsic_length_category_svd_trueT']
-test_group_list = ['extrinsic_angle_category_svd_trueT', 'extrinsic_core_category_svd_trueT', 'extrinsic_core_svd_trueT', 'extrinsic_length_category_svd_trueT']
+# test_group_list = ['extrinsic_angle_category_svd_trueT', 'extrinsic_core_category_svd_trueT', 'extrinsic_core_svd_trueT', 'extrinsic_length_category_svd_trueT']
+test_group_list = ['extrinsic_true_matchessvd8point_all', 'extrinsic_core_category_svd_trueT']
 total_cnt = 1300
 filter_func = lambda example: example['RE'] < 10 and example['TE'] < 10 and example['cost_time'] < 10
 # filter_func = None

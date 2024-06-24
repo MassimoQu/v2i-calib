@@ -73,13 +73,12 @@ def get_reverse_R_t(R, t):
 def implement_R_t_points_n_3(R, t, points):
     R = np.array(R)
     t = np.array(t)
-    points = points.reshape(-1, 3).T
-    converted_points = np.dot(R, points) + t.reshape(3, 1)
+    converted_points = np.dot(R, points.reshape(-1, 3).T) + t.reshape(3, 1)
     converted_points = converted_points.T.reshape(-1, 3)
     return converted_points
 
 def implement_R_t_3dbox_n_8_3(R, t, boxes):
-    return implement_R_t_points_n_3(R, t, boxes).reshape(-1, 8, 3)
+    return implement_R_t_points_n_3(R, t, boxes).reshape(8, 3)
 
 def implement_R_t_3dbox_object_list(R, t, box_object_list):
     converted_box_object_list = []
@@ -164,7 +163,12 @@ def get_RE_TE_by_compare_T_6DOF_result_true(T1_6DOF, T2_6DOF):
     # TE : m
     R1, t1 = convert_T_to_Rt(convert_6DOF_to_T(T1_6DOF))
     R2, t2 = convert_T_to_Rt(convert_6DOF_to_T(T2_6DOF))
-    RE = np.arccos((np.trace(np.dot(R1, R2.T)) - 1) / 2) * 180 / np.pi
+    val = np.trace(np.dot(R1, R2.T))
+    if np.trace(np.dot(R1, R2.T)) > 3:
+        val = 3
+    elif val < -1:
+        val = -1
+    RE = np.arccos((val - 1) / 2) * 180 / np.pi
     TE = np.linalg.norm(t1 - t2)
     return RE, TE
     
