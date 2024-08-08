@@ -7,7 +7,7 @@ sys.path.append('./visualize')
 from IoU_utils import cal_3dIoU
 from bbox_utils import get_lwh_from_bbox3d_8_3, get_bbox3d_8_3_from_xyz_lwh, get_vector_between_bbox3d_8_3, get_length_between_bbox3d_8_3
 from appearance_similarity import cal_appearance_similarity
-from BBoxVisualizer_open3d import BBoxVisualizer_open3d as BBoxVisualizer
+# from BBoxVisualizer_open3d import BBoxVisualizer_open3d as BBoxVisualizer
 from CorrespondingDetector import CorrespondingDetector
 from extrinsic_utils import get_time_judge, implement_T_3dbox_object_list, get_extrinsic_from_two_3dbox_object, convert_T_to_6DOF
 from appearance_similarity import cal_appearance_similarity
@@ -112,7 +112,7 @@ def cal_similarity_size(infra_bbox_8_3, vehicle_bbox_8_3):
 
     similarity_size = cal_3dIoU(np.array(infra_box), np.array(vehicle_box))
 
-    BBoxVisualizer().plot_boxes_8_3_list([infra_box, vehicle_box], [(1, 0, 0), (0, 1, 0)])
+    # BBoxVisualizer().plot_boxes_8_3_list([infra_box, vehicle_box], [(1, 0, 0), (0, 1, 0)])
 
     return similarity_size
 

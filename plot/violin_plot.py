@@ -133,13 +133,13 @@ def improved_violin_and_box_and_line_plot(df, success_rate_df, key_list=['RE', '
         # ax.set_ylim(-1, ax.get_ylim()[1])  # 确保左侧y轴从0开始
         # ax2.set_ylim(0, ax2.get_ylim()[1])  # 确保右侧y轴从0开始
 
-        labels = ax.get_yticklabels()
-        # print(labels)
-        if key == 'cost_time':
-            labels[1] = matplotlib.text.Text(0, 0, '0.1')
-        else:
-            labels[1] = matplotlib.text.Text(0, 0, '0.2')
-        ax.set_yticklabels(labels)
+        # labels = ax.get_yticklabels()
+        # # print(labels)
+        # if key == 'cost_time':
+        #     labels[1] = matplotlib.text.Text(0, 0, '0.1')
+        # else:
+        #     labels[1] = matplotlib.text.Text(0, 0, '0.2')
+        # ax.set_yticklabels(labels)
 
 
         # if key == 'cost_time':
@@ -177,15 +177,18 @@ def improved_violin_and_box_and_line_plot(df, success_rate_df, key_list=['RE', '
         ax.set_xlim(new_x_min - 0.25, new_x_max + 0.25)
         ax.set_xlim(x_min - 0.25, x_max + 0.25)
 
+        ax.grid(False)
+
         plt.tight_layout() 
         plt.show()
+
 
 ############################################
 
 difficulty = ['easy', 'hard']
 # test_group_list = ['extrinsic_angle_category_svd_trueT', 'extrinsic_core_appearance_category_svd_trueT', 'extrinsic_core_category_svd_trueT', 'extrinsic_core_svd_trueT', 'extrinsic_length_angle_category_svd_trueT', 'extrinsic_length_category_svd_trueT']
-# test_group_list = ['extrinsic_angle_category_svd_trueT', 'extrinsic_core_category_svd_trueT', 'extrinsic_core_svd_trueT', 'extrinsic_length_category_svd_trueT']
-test_group_list = ['extrinsic_true_matchessvd8point_all', 'extrinsic_core_category_svd_trueT']
+test_group_list = ['extrinsic_core_category_svd_trueT', 'extrinsic_core_svd_trueT', 'extrinsic_angle_category_svd_trueT', 'extrinsic_length_category_svd_trueT']
+# test_group_list = ['extrinsic_true_matchessvd8point_all', 'extrinsic_core_category_svd_trueT']
 total_cnt = 1300
 filter_func = lambda example: example['RE'] < 10 and example['TE'] < 10 and example['cost_time'] < 10
 # filter_func = None

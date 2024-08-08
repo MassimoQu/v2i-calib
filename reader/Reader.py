@@ -80,9 +80,16 @@ class Reader():
         return bbox3d_list
 
     def get_pointcloud(self, path_pointcloud):
-        pointpillar = o3d.io.read_point_cloud(path_pointcloud)
-        points = np.asarray(pointpillar.points)
-        return points
+
+        if path_pointcloud.endswith('.bin'):
+            points = np.fromfile(path_pointcloud, dtype=np.float32).reshape(-1, 4)
+            return points[:, :3]
+        elif path_pointcloud.endswith('.pcd'):
+            pointpillar = o3d.io.read_point_cloud(path_pointcloud)
+            points = np.asarray(pointpillar.points)
+            return points
+    
+    
 
     def get_intrinsic(self, path_intrinsic):
         my_json = read_json(path_intrinsic)

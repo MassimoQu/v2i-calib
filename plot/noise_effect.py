@@ -1,5 +1,9 @@
 import os
 import matplotlib.pyplot as plt
+import seaborn as sns
+from matplotlib.colors import Normalize
+from matplotlib.patches import Polygon, Rectangle, Circle
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 import json
 import numpy as np
 import sys
@@ -36,7 +40,7 @@ def get_test_noised_V2XSim_result_from_file(k = 15, totol_sample_num = 100, nois
     return TE_list, RE_list
 
 
-def get_test_noised_V2XSim_result(k = 15, totol_sample_num = 100, noise = {'pos_std':1.6, 'rot_std':0, 'pos_mean':0, 'rot_mean':0}, folder_name = r'new_clean_result/extrinsic_noise_gaussian_category_core_vertex_distance_svd8point_threshold/all_dataset'):
+def get_test_noised_V2XSim_result(k = 15, totol_sample_num = 50, noise = {'pos_std':1.6, 'rot_std':0, 'pos_mean':0, 'rot_mean':0}, folder_name = r'new_clean_result/extrinsic_noise_gaussian_category_core_vertex_distance_svd8point_threshold/all_dataset'):
         
         TE_list = []
         RE_list = []
@@ -54,6 +58,9 @@ def get_test_noised_V2XSim_result(k = 15, totol_sample_num = 100, noise = {'pos_
 
             TE_list.append(TE)
             RE_list.append(RE)
+
+            if len(TE_list) >= totol_sample_num:
+                break
 
         return TE_list, RE_list
 
@@ -135,6 +142,206 @@ def plot_triple_line_graph(x, y1, y2, y3, x_label, y1_label, y2_label, y3_label,
 
     # Show the plot
     plt.show()
+
+
+# def generate_data_for_heatmap(pos_std_range, rot_std_range, total_sample_num=10, folder_name=''):
+#     RE_matrix = np.zeros((len(pos_std_range), len(rot_std_range)))
+#     TE_matrix = np.zeros((len(pos_std_range), len(rot_std_range)))
+    
+#     for i, pos_std in enumerate(pos_std_range):
+#         for j, rot_std in enumerate(rot_std_range):
+#             noise = {'pos_std': pos_std, 'rot_std': rot_std, 'pos_mean': 0, 'rot_mean': 0}
+#             TE_list, RE_list = get_test_noised_V2XSim_result(k=total_sample_num, noise=noise, folder_name=folder_name)
+            
+#             RE_avg = np.mean(RE_list) if RE_list else 180
+#             TE_avg = np.mean(TE_list) if TE_list else 50
+            
+#             RE_matrix[i, j] = RE_avg
+#             TE_matrix[i, j] = TE_avg
+    
+#     return TE_matrix, RE_matrix
+
+# def plot_diagonal_split_heatmap(TE_matrix, RE_matrix, pos_std_range, rot_std_range):
+#     fig, ax = plt.subplots()
+#     norm_TE = Normalize(vmin=TE_matrix.min(), vmax=TE_matrix.max())
+#     norm_RE = Normalize(vmin=RE_matrix.min(), vmax=RE_matrix.max())
+    
+#     for i in range(len(pos_std_range)):
+#         for j in range(len(rot_std_range)):
+#             # Draw RE in top-left
+#             top_left_triangle = np.array([[j, i+1], [j+1, i+1], [j, i]])
+#             top_left_color = plt.cm.Reds(norm_RE(RE_matrix[i, j]))
+#             ax.add_patch(Polygon(top_left_triangle, color=top_left_color, ec=None, linewidth=0))
+            
+#             # Draw TE in bottom-right
+#             bottom_right_triangle = np.array([[j, i], [j+1, i], [j+1, i+1]])
+#             bottom_right_color = plt.cm.Blues(norm_TE(TE_matrix[i, j]))
+#             ax.add_patch(Polygon(bottom_right_triangle, color=bottom_right_color, ec=None, linewidth=0))
+    
+#     ax.set_xlim(0, len(rot_std_range))
+#     ax.set_ylim(0, len(pos_std_range))
+#     ax.set_xticks(np.arange(len(rot_std_range))+0.5, labels=rot_std_range)
+#     ax.set_yticks(np.arange(len(pos_std_range))+0.5, labels=pos_std_range)
+#     ax.set_xlabel('Rotation Noise Std Dev (°)', fontsize=12)
+#     ax.set_ylabel('Position Noise Std Dev (m)', fontsize=12)
+#     ax.set_title('Diagonal Split Heatmap of RE and TE with varying noise levels', fontsize=14)
+
+#     # Adding colorbars on the right side
+#     sm_TE = plt.cm.ScalarMappable(cmap='Blues', norm=norm_TE)
+#     sm_RE = plt.cm.ScalarMappable(cmap='Reds', norm=norm_RE)
+#     cbar_TE = plt.colorbar(sm_TE, ax=ax, location='right', label='TE (Translation Error)')
+#     cbar_RE = plt.colorbar(sm_RE, ax=ax, location='right', label='RE (Rotation Error)')
+#     cbar_TE.ax.tick_params(labelsize=10)
+#     cbar_RE.ax.tick_params(labelsize=10)
+
+#     plt.grid(False)  # Turn off the grid
+#     plt.show()
+
+
+def generate_data_for_heatmap(pos_std_range, rot_std_range, total_sample_num=10, folder_name=''):
+    RE_matrix = np.zeros((len(pos_std_range), len(rot_std_range)))
+    TE_matrix = np.zeros((len(pos_std_range), len(rot_std_range)))
+    success_rate_matrix = np.zeros((len(pos_std_range), len(rot_std_range)))
+    
+    for i, pos_std in enumerate(pos_std_range):
+        for j, rot_std in enumerate(rot_std_range):
+            noise = {'pos_std': pos_std, 'rot_std': rot_std, 'pos_mean': 0, 'rot_mean': 0}
+            TE_list, RE_list = get_test_noised_V2XSim_result(k=total_sample_num, noise=noise, folder_name=folder_name)
+            
+            RE_avg = np.mean([re for re in RE_list if re < 10]) if RE_list else -1
+            TE_avg = np.mean([te for te in TE_list if te < 10]) if TE_list else -1
+            success_rate = np.sum([1 for te, re in zip(TE_list, RE_list) if te < 2 and re < 2]) / len(TE_list) if TE_list else 0
+            
+            RE_matrix[i, j] = RE_avg
+            TE_matrix[i, j] = TE_avg
+            success_rate_matrix[i, j] = success_rate
+    
+    # 找到 RE_matrix 和 TE_matrix 中除了-1以外的最大值
+    max_RE = np.max(RE_matrix[RE_matrix != -1])
+    max_TE = np.max(TE_matrix[TE_matrix != -1])
+
+    # 将 -1 替换为相应的最大值
+    RE_matrix[RE_matrix == -1] = max_RE
+    TE_matrix[TE_matrix == -1] = max_TE
+
+    return TE_matrix, RE_matrix, success_rate_matrix
+
+def plot_enhanced_heatmap(TE_matrix, RE_matrix, success_rate_matrix, pos_std_range, rot_std_range):
+    fig, ax = plt.subplots()
+    norm_TE = Normalize(vmin=TE_matrix.min(), vmax=TE_matrix.max())
+    norm_RE = Normalize(vmin=RE_matrix.min(), vmax=RE_matrix.max())
+    norm_success = Normalize(vmin=0, vmax=1)  # Assuming success_rate is between 0 and 1
+    
+    for i in range(len(pos_std_range)):
+        for j in range(len(rot_std_range)):
+            # RE in the top half
+            ax.add_patch(Rectangle((j, i + 0.5), 1, 0.5, color=plt.cm.Reds(norm_RE(RE_matrix[i, j]))))
+            # TE in the bottom half
+            ax.add_patch(Rectangle((j, i), 1, 0.5, color=plt.cm.Blues(norm_TE(TE_matrix[i, j]))))
+            # Success rate in the center with a fixed-size square
+            square_side = 0.25
+            ax.add_patch(Rectangle((j + 0.375, i + 0.375), square_side, square_side, color=plt.cm.Greens(norm_success(success_rate_matrix[i, j]))))
+    
+    ax.set_xlim(0, len(rot_std_range))
+    ax.set_ylim(0, len(pos_std_range))
+    ax.set_xticks(np.arange(len(rot_std_range)) + 0.5, labels=rot_std_range)
+    ax.set_yticks(np.arange(len(pos_std_range)) + 0.5, labels=pos_std_range)
+    ax.set_xlabel('Rotation Noise Std Dev (°)')
+    ax.set_ylabel('Position Noise Std Dev (m)')
+    ax.set_title('Heatmap of RE, TE, and Success Rate', fontsize=14)
+
+    # Adding colorbars
+    cb_RE = plt.colorbar(plt.cm.ScalarMappable(cmap='Reds', norm=norm_RE), ax=ax, location='right', label='RE (Rotation Error)')
+    cb_TE = plt.colorbar(plt.cm.ScalarMappable(cmap='Blues', norm=norm_TE), ax=ax, location='right', label='TE (Translation Error)')
+    cb_success = plt.colorbar(plt.cm.ScalarMappable(cmap='Greens', norm=norm_success), ax=ax, location='left', label='Success Rate (%)', pad=0.2)
+    cb_success.ax.yaxis.set_label_position('left')
+
+    # plt.grid(True)  # Turn off the grid
+    plt.show()
+
+# def plot_enhanced_heatmap(TE_matrix, RE_matrix, success_rate_matrix, pos_std_range, rot_std_range):
+#     fig, ax = plt.subplots()
+#     norm_TE = Normalize(vmin=TE_matrix.min(), vmax=TE_matrix.max())
+#     norm_RE = Normalize(vmin=RE_matrix.min(), vmax=RE_matrix.max())
+#     norm_success = Normalize(vmin=0, vmax=1)  # Assuming success_rate is between 0 and 1
+    
+#     for i in range(len(pos_std_range)):
+#         for j in range(len(rot_std_range)):
+#             # RE in top-left
+#             top_left_triangle = np.array([[j, i+1], [j+1, i+1], [j, i]])
+#             top_left_color = plt.cm.Reds(norm_RE(RE_matrix[i, j]))
+#             ax.add_patch(Polygon(top_left_triangle, color=top_left_color))
+            
+#             # TE in bottom-right
+#             bottom_right_triangle = np.array([[j, i], [j+1, i], [j+1, i+1]])
+#             bottom_right_color = plt.cm.Blues(norm_TE(TE_matrix[i, j]))
+#             ax.add_patch(Polygon(bottom_right_triangle, color=bottom_right_color))
+            
+#             # Success rate in center
+#             center_color = plt.cm.Greens(norm_success(success_rate_matrix[i, j]))
+#             radius = 0.25 * norm_success(success_rate_matrix[i, j])  # Dynamic radius based on success rate
+#             ax.add_patch(Circle((j + 0.5, i + 0.5), radius, color=center_color, alpha=0.8))
+    
+#     ax.set_xlim(0, len(rot_std_range))
+#     ax.set_ylim(0, len(pos_std_range))
+#     ax.set_xticks(np.arange(len(rot_std_range)) + 0.5, labels=rot_std_range)
+#     ax.set_yticks(np.arange(len(pos_std_range)) + 0.5, labels=pos_std_range)
+#     ax.set_xlabel('Rotation Noise Std Dev (°)')
+#     ax.set_ylabel('Position Noise Std Dev (m)')
+#     ax.set_title('Tri-Split Heatmap of RE, TE, and Success Rate(te<1, re<1)', fontsize=14)
+
+#     # Adding colorbars
+#     plt.colorbar(plt.cm.ScalarMappable(cmap='Reds', norm=norm_RE), ax=ax, location='right', label='RE (Rotation Error)')
+#     plt.colorbar(plt.cm.ScalarMappable(cmap='Blues', norm=norm_TE), ax=ax, location='right', label='TE (Translation Error)')
+#     plt.colorbar(plt.cm.ScalarMappable(cmap='Greens', norm=norm_success), ax=ax, location='right', label='Success Rate (%)')
+
+#     plt.grid(False)  # Turn off the grid
+#     plt.show()
+
+
+# def plot_triple_value_heatmap(TE_matrix, RE_matrix, SR_matrix, pos_std_range, rot_std_range):
+#     fig, ax = plt.subplots()
+#     norm_TE = Normalize(vmin=TE_matrix.min(), vmax=TE_matrix.max())
+#     norm_RE = Normalize(vmin=RE_matrix.min(), vmax=RE_matrix.max())
+#     norm_SR = Normalize(vmin=0, vmax=1)  # Assuming SR is a fraction from 0 to 1
+    
+#     for i in range(len(pos_std_range)):
+#         for j in range(len(rot_std_range)):
+#             # Success Rate as background color
+#             success_color = plt.cm.Greys(norm_SR(SR_matrix[i, j]))
+#             ax.add_patch(Rectangle((j, i), 1, 1, color=success_color, ec=None, linewidth=0))
+            
+#             # Draw TE in bottom half
+#             bottom_color = plt.cm.Blues(norm_TE(TE_matrix[i, j]))
+#             ax.add_patch(Rectangle((j, i), 1, 0.5, color=bottom_color, ec=None, linewidth=0))
+            
+#             # Draw RE in top half
+#             top_color = plt.cm.Reds(norm_RE(RE_matrix[i, j]))
+#             ax.add_patch(Rectangle((j, i+0.5), 1, 0.5, color=top_color, ec=None, linewidth=0))
+    
+#     # Setting the grid for blocks of the same noise type
+#     ax.set_xticks(np.arange(-0.5, len(rot_std_range), 1), minor=True)
+#     ax.set_yticks(np.arange(-0.5, len(pos_std_range), 1), minor=True)
+#     ax.grid(which='minor', color='black', linestyle='-', linewidth=2)
+    
+#     ax.set_xlim(0, len(rot_std_range))
+#     ax.set_ylim(0, len(pos_std_range))
+#     ax.set_xticks(np.arange(len(rot_std_range))+0.5, labels=rot_std_range)
+#     ax.set_yticks(np.arange(len(pos_std_range))+0.5, labels=pos_std_range)
+#     ax.set_xlabel('Rotation Noise Std Dev (°)', fontsize=12)
+#     ax.set_ylabel('Position Noise Std Dev (m)', fontsize=12)
+#     ax.set_title('Heatmap of RE, TE, and Success Rate with varying noise levels', fontsize=14)
+
+#     # Adding colorbars
+#     sm_TE = plt.cm.ScalarMappable(cmap='Blues', norm=norm_TE)
+#     sm_RE = plt.cm.ScalarMappable(cmap='Reds', norm=norm_RE)
+#     sm_SR = plt.cm.ScalarMappable(cmap='Greys', norm=norm_SR)
+#     plt.colorbar(sm_TE, ax=ax, location='right', label='TE (Translation Error)', pad=0.01)
+#     plt.colorbar(sm_RE, ax=ax, location='right', label='RE (Rotation Error)')
+#     plt.colorbar(sm_SR, ax=ax, location='right', label='Success Rate', pad=0.1)
+
+#     plt.grid(False)  # Turn off the main grid
+#     plt.show()
 
 
 def plot_line_graph_for_TE_with_varying_pos_std(std_min = 0, std_max = 2, std_num = 6, folder_name = r'new_clean_result/extrinsic_noise_gaussian_category_core_vertex_distance_svd8point_threshold/all_dataset'):
@@ -272,5 +479,17 @@ if __name__ == '__main__':
 
     # plot_line_graph_for_mAP_with_varying_pos_std()
 
-    plot_line_graph_for_mAP_with_varying_rot_std()
+    # plot_line_graph_for_mAP_with_varying_rot_std()
 
+    pos_std_list = [0, 0.4, 0.8, 1.2, 1.6, 2.0]
+    rot_std_list = [0, 5, 10, 15, 20, 25]
+    # rot_std_list = [0, 0.4, 0.8, 1.2, 1.6, 2.0]
+    # folder_name = r'new_clean_result/extrinsic_noise_gaussian_category_core_vertex_distance_svd8point_threshold/all_dataset'
+
+    # TE_matrix, RE_matrix = generate_heatmap_data(pos_std_list, rot_std_list, folder_name)
+    # plot_combined_heatmap(pos_std_list, rot_std_list, TE_matrix, RE_matrix)
+
+    TE_matrix, RE_matrix, Success_rate_matrix = generate_data_for_heatmap(pos_std_list, rot_std_list)
+    plot_enhanced_heatmap(TE_matrix, RE_matrix, Success_rate_matrix, pos_std_list, rot_std_list)
+
+    # plot_triple_value_heatmap(TE_matrix, RE_matrix, Success_rate_matrix, pos_std_list, rot_std_list)

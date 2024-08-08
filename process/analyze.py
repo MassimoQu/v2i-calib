@@ -937,9 +937,9 @@ def print_avg_RE_TE_time_cost(example_list, title):
     RE_list = [example['RE'] for example in example_list]
     TE_list = [example['TE'] for example in example_list]
     time_cost_list = [example['cost_time'] for example in example_list]
-    RE_mean = sum(RE_list) / len(RE_list)
-    TE_mean = sum(TE_list) / len(TE_list)
-    time_cost_mean = sum(time_cost_list) / len(time_cost_list)
+    RE_mean = sum(RE_list) / len(RE_list) if len(RE_list) else 0
+    TE_mean = sum(TE_list) / len(TE_list) if len(TE_list) else 0
+    time_cost_mean = sum(time_cost_list) / len(time_cost_list) if len(time_cost_list) else 0
     print(f'{title} RE_mean: {RE_mean}, TE_mean: {TE_mean}, time_cost_mean: {time_cost_mean}')
 
 
@@ -986,11 +986,11 @@ def devide_group_according_scene_difficulty(stability_threshold = 5, total_cnt =
                 #         extreme_group.append(example)
 
                 for example in example_list:
+                    if 'stability' in example.keys():
+                        stability_cnt[example['stability']] = stability_cnt.get(example['stability'], 0) + 1
 
-                    stability_cnt[example['stability']] = stability_cnt.get(example['stability'], 0) + 1
-
-                    if example['stability'] < stability_threshold:
-                        continue
+                        if example['stability'] < stability_threshold:
+                            continue
 
                     if example['RE'] < 1 and example['TE'] < 1:
                         success_cnt += 1
@@ -1017,7 +1017,7 @@ def devide_group_according_scene_difficulty(stability_threshold = 5, total_cnt =
                 no_common_cnt += len(example_list)
                 no_common_group += example_list
 
-    # print(f'total: {total_cnt}, valid_cnt: {valid_cnt}, valid_bad_cnt: {valid_bad_cnt}, invalid_cnt: {invalid_cnt}, no_common_cnt: {no_common_cnt}')
+    print(f'total: {total_cnt}, valid_cnt: {valid_cnt}, valid_bad_cnt: {valid_bad_cnt}, invalid_cnt: {invalid_cnt}, no_common_cnt: {no_common_cnt}')
     
     if print_stability:
         print(stability_cnt)
@@ -1037,7 +1037,7 @@ if __name__ == "__main__":
 
     # count_test_result()
     
-    total_num = 6600
+    total_num = 100
     
     # data_folder = r'new_clean_result/extrinsic_category_core_centerpoint_distance_vertex_distance_svd8point_threshold/common_boxes_filtered_dataset/'
     # intermediate_folder = r'new_clean_result/extrinsic_category_core_centerpoint_distance_vertex_distance_svd8point_threshold/common_boxes_filtered_dataset/analyze/'
@@ -1045,25 +1045,25 @@ if __name__ == "__main__":
     # data_folder = r'new_clean_result/extrinsic_category_core_centerpoint_distance_vertex_distance_svd8point_top matches/common_boxes_filtered_dataset/'
     # intermediate_folder = r'new_clean_result/extrinsic_category_core_centerpoint_distance_vertex_distance_svd8point_top matches/common_boxes_filtered_dataset/analyze/'
 
-    data_folder = r'new_clean_result/extrinsic_category_core_centerpoint_distance_vertex_distance_svd8point_threshold/all_dataset/'
-    intermediate_folder = r'new_clean_result/extrinsic_category_core_centerpoint_distance_vertex_distance_svd8point_threshold/all_dataset/analyze/'
+    data_folder = r'/home/massimo/vehicle_infrastructure_calibration/new_clean_result/V2XSim_dataset_ndt/'
+    intermediate_folder = r'/home/massimo/vehicle_infrastructure_calibration/new_clean_result/V2XSim_dataset_ndt/analyze/'
 
     # data_folder = r'new_clean_result/extrinsic_category_core_centerpoint_distance_vertex_distance_svd8point_threshold/all_dataset/'
     # intermediate_folder = r'new_clean_result/extrinsic_category_core_centerpoint_distance_vertex_distance_svd8point_threshold/all_dataset/analyze/'
 
 
-    if not os.path.exists(intermediate_folder):
-        os.makedirs(intermediate_folder)
+    # if not os.path.exists(intermediate_folder):
+    #     os.makedirs(intermediate_folder)
 
 
-    for threshold in range(0, 20, 4):
-        print('threshold:', threshold)
-        devide_group_according_scene_difficulty(stability_threshold = threshold, total_cnt = total_num, k = 15, folder_name = data_folder, output_folder = intermediate_folder, print_stability=(threshold==0))
-        print('-----------------------------------')
+    # for threshold in range(0, 20, 4):
+    #     print('threshold:', threshold)
+    #     devide_group_according_scene_difficulty(stability_threshold = threshold, total_cnt = total_num, k = 15, folder_name = data_folder, output_folder = intermediate_folder, print_stability=(threshold==0))
+    #     print('-----------------------------------')
 
-    # devide_group_according_scene_difficulty(total_cnt = total_num, k = 15, folder_name = data_folder, output_folder = intermediate_folder)
+    devide_group_according_scene_difficulty(total_cnt = total_num, k = 15, folder_name = data_folder, output_folder = intermediate_folder)
 
-    # count_test_result_according_scene_difficulty(total_num = total_num, k = 15, visualize=False, folder_name = intermediate_folder)
+    count_test_result_according_scene_difficulty(total_num = total_num, k = 15, visualize=False, folder_name = intermediate_folder)
 
     # count_result_according_difficulty(total_cnt = total_num, k = 15, folder_name = data_folder)
 

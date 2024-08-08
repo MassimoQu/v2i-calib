@@ -1,21 +1,31 @@
 import os
 import time
 import json
+import numpy as np
 import sys
 sys.path.append('./reader')
 sys.path.append('./process/utils')
+sys.path.append('./traditional_registration')
 from CooperativeBatchingReader import CooperativeBatchingReader
+from test_V2XSim import V2XSim_Reader
 from extrinsic_utils import get_RE_TE_by_compare_T_6DOF_result_true, convert_T_to_6DOF, convert_Rt_to_T
 
 import reglib
 import pygicp
 from probreg import filterreg
 
-def batching_test_extrisic_from_two_box_object_list(verbose = False, filter_num = 15, output_dict = 'intermediate_output', method = 'gicp', data_difficulty = 'hard'):
-    if data_difficulty not in ['easy', 'hard']:
-        raise ValueError('data_difficulty should be easy or hard')
+def batching_test_extrisic_from_two_box_object_list(verbose = False, filter_num = 15, output_dict = 'intermediate_output', method = 'gicp', data_difficulty = 'hard', data = 'V2XSim'):
     
-    reader = CooperativeBatchingReader(path_data_info = f'/home/massimo/vehicle_infrastructure_calibration/dataset_division/' + data_difficulty + '_data_info.json')
+    if data == 'V2XSim':
+        wrapper = V2XSim_Reader().generate_vehicle_vehicle_bboxes_object_list_pointcloud(noise={'pos_std': 0, 'rot_std': 0, 'pos_mean': 0, 'rot_mean': 0})
+
+    elif data == 'DAIR-V2X':
+        if data_difficulty not in ['easy', 'hard']:
+            raise ValueError('data_difficulty should be easy or hard')
+        else:
+            reader = CooperativeBatchingReader(path_data_info = f'/home/massimo/vehicle_infrastructure_calibration/dataset_division/' + data_difficulty + '_data_info.json')
+            wrapper = reader.generate_infra_vehicle_pointcloud()
+    
     cnt = 0 
 
     valid_test_list = []
@@ -23,7 +33,7 @@ def batching_test_extrisic_from_two_box_object_list(verbose = False, filter_num 
 
     error_list = []
 
-    for infra_file_name, vehicle_file_name, infra_pointcloud, vehicle_pointcloud, T_true in reader.generate_infra_vehicle_pointcloud():
+    for infra_file_name, vehicle_file_name, _, _, infra_pointcloud, vehicle_pointcloud, T_true in wrapper:
         
         # try:
         if True:
@@ -37,7 +47,8 @@ def batching_test_extrisic_from_two_box_object_list(verbose = False, filter_num 
             if method == 'gicp':
                 T_6DOF_result = convert_T_to_6DOF(pygicp.align_points(infra_pointcloud, vehicle_pointcloud, method='GICP'))
             elif method == 'ndt':
-                T_6DOF_result = convert_T_to_6DOF(reglib.ndt(source=infra_pointcloud, target=vehicle_pointcloud))
+                # print('type of infra_pointcloud:', type(infra_pointcloud))
+                T_6DOF_result = convert_T_to_6DOF(reglib.ndt(source=infra_pointcloud.astype(np.float64), target=vehicle_pointcloud.astype(np.float64)))
             elif method == 'filterreg':
                 result = filterreg.registration_filterreg(infra_pointcloud, vehicle_pointcloud)
                 T_6DOF_result = convert_T_to_6DOF(convert_Rt_to_T(result.transformation.rot, result.transformation.t))
@@ -110,10 +121,13 @@ if __name__ == '__main__':
 
     # data
     data_difficulty = 'hard'
-    result_folder = f'intermediate_output'
-    output_dict = f'{result_folder}/{data_difficulty}_dataset'
+    result_folder = f'new_clean_result'
+    # filterreg ndt gicp
+    method = 'gicp'
+    # output_dict = f'{result_folder}/{data_difficulty}_dataset'
+    output_dict = f'{result_folder}/V2XSim_dataset_{method}'
 
     if not os.path.exists(output_dict):
         os.makedirs(output_dict)
 
-    batching_test_extrisic_from_two_box_object_list(verbose = False, filter_num = 15, using_predict_score=False, using_cpp_version=False, output_dict=output_dict, data_difficulty=data_difficulty)
+    batching_test_extrisic_from_two_box_object_list(verbose = False, filter_num = 15, output_dict = output_dict, method = method, data_difficulty = data_difficulty, data = 'V2XSim')

@@ -24,13 +24,13 @@ def generate_noise(pos_std, rot_std, pos_mean=0, rot_mean=0):
     
     Returns:
         pose_noise: np.ndarray, [6,]
-            [x, y, z, roll, yaw, pitch]
+            [x, y, z, roll, pitch, yaw]
     """
 
     xy = np.random.normal(pos_mean, pos_std, size=(2))
     yaw = np.random.normal(rot_mean, rot_std, size=(1))
 
-    pose_noise = np.array([xy[0], xy[1], 0, 0, yaw[0], 0])
+    pose_noise = np.array([xy[0], xy[1], 0, 0, 0, yaw[0]])
 
     
     return pose_noise

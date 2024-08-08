@@ -3,11 +3,17 @@ import open3d as o3d
 import sys
 sys.path.append('./reader')
 sys.path.append('./process/utils')
+sys.path.append('./process/corresponding')
+sys.path.append('./process/search')
+from Matches2Extrinsics import Matches2Extrinsics
+from BoxesMatch import BoxesMatch
 from CooperativeReader import CooperativeReader
 from CooperativeBatchingReader import CooperativeBatchingReader
 from Filter3dBoxes import Filter3dBoxes
+from Reader import Reader
+from test_V2XSim import V2XSim_Reader
 from extrinsic_utils import implement_T_points_n_3, implement_T_3dbox_object_list, get_reverse_T
-from extrinsic_utils import convert_6DOF_to_T
+from extrinsic_utils import convert_6DOF_to_T, get_RE_TE_by_compare_T_6DOF_result_true, convert_T_to_6DOF
 
 
 class BBoxVisualizer_open3d():
@@ -168,12 +174,46 @@ if '__main__' == __name__:
     # test_original_dataset('007038', '000546', 100)
     # test_predicted_dataset('007038', '000546', 100)
 
-    reader = CooperativeReader('006782', '000102')
+    # reader = CooperativeReader('006782', '000102')
 
-    infra_pointcloud, vehicle_pointcloud = reader.get_cooperative_infra_vehicle_pointcloud_vehicle_coordinate()
-    T_i2v = reader.get_cooperative_T_i2v()
+    # infra_pointcloud, vehicle_pointcloud = reader.get_cooperative_infra_vehicle_pointcloud_vehicle_coordinate()
+    # T_i2v = reader.get_cooperative_T_i2v()
 
-    BBoxVisualizer_open3d().plot_boxes3d_lists_pointcloud_lists([],[infra_pointcloud, vehicle_pointcloud], [])
+    # BBoxVisualizer_open3d().plot_boxes3d_lists_pointcloud_lists([],[infra_pointcloud, vehicle_pointcloud], [])
 
     
-    
+    # bbox3d_list = Reader().get_3dbbox_object_list("000010.json")
+    # pointcloud = Reader().get_pointcloud("000010.pcd")
+    # BBoxVisualizer_open3d().plot_boxes3d_lists_pointcloud_lists([bbox3d_list], [pointcloud], [(1, 0, 0)])
+
+    scene = [0]
+
+    reader = V2XSim_Reader() 
+
+    corresponding_strategy = ['centerpoint_distance','vertex_distance']
+    matches_filter_strategy = 'threshold'
+
+    for frame_idx, cav_id, bbox3d_object_list_lidar1, bbox3d_object_list_lidar2, pointcloud1, pointcloud2, T_lidar2_lidar1 in reader.generate_vehicle_vehicle_bboxes_object_list_pointcloud(noise={'pos_std':1, 'rot_std':0, 'pos_mean':0, 'rot_mean':0}):
+        
+        if frame_idx not in scene:
+            continue
+
+        print(f"frame_idx: {frame_idx}, cav_id: {cav_id}")
+
+        matches_with_score_list = BoxesMatch(bbox3d_object_list_lidar1, bbox3d_object_list_lidar2, corresponding_strategy=corresponding_strategy).get_matches_with_score()
+        T_calculated = Matches2Extrinsics(bbox3d_object_list_lidar1, bbox3d_object_list_lidar2, matches_score_list = matches_with_score_list).get_combined_extrinsic(matches_filter_strategy = matches_filter_strategy)
+
+        RE, TE = get_RE_TE_by_compare_T_6DOF_result_true(convert_T_to_6DOF(T_lidar2_lidar1), T_calculated)
+
+        print(f'RE: {RE}, TE: {TE}')
+
+        bbox3d_object_list_lidar1_lidar2 = implement_T_3dbox_object_list(convert_6DOF_to_T(T_calculated), bbox3d_object_list_lidar1)
+        pointcloud1_lidar2 = implement_T_points_n_3(convert_6DOF_to_T(T_calculated), pointcloud1[:,:3])
+
+        bbox3d_object_list_lidar1_true = implement_T_3dbox_object_list(T_lidar2_lidar1, bbox3d_object_list_lidar1)
+        pointcloud1_true = implement_T_points_n_3(T_lidar2_lidar1, pointcloud1[:,:3])
+
+        BBoxVisualizer_open3d().plot_boxes3d_lists_pointcloud_lists([bbox3d_object_list_lidar1_lidar2, bbox3d_object_list_lidar2], [pointcloud1_lidar2, pointcloud2[:,:3]], [(1, 0, 0), (0, 1, 0)])
+        BBoxVisualizer_open3d().plot_boxes3d_lists_pointcloud_lists([bbox3d_object_list_lidar1_true, bbox3d_object_list_lidar2], [pointcloud1_true, pointcloud2[:,:3]], [(1, 0, 0), (0, 1, 0)])
+        break
+

@@ -100,6 +100,14 @@ def implement_T_3dbox_object_list(T, box_object_list):
     R, t = convert_T_to_Rt(T)
     return implement_R_t_3dbox_object_list(R, t, box_object_list)
 
+def implement_T_to_3dbox_with_own_center(T, box):
+    R, t = convert_T_to_Rt(T)
+    center = np.mean(box, axis=0)
+    moved_to_origin = box - center
+    rotated = np.dot(R, moved_to_origin.T).T
+    rotated_back = rotated + center
+    return implement_R_t_3dbox_n_8_3(np.identity(3), t, rotated_back)
+
 def multiply_extrinsics(T1, T2):
     R1, t1 = convert_T_to_Rt(T1)
     R1 = np.matrix(R1)

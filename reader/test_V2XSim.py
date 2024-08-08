@@ -11,7 +11,7 @@ from BBox3d import BBox3d
 import sys
 sys.path.append('/home/massimo/vehicle_infrastructure_calibration/process/utils')
 sys.path.append('/home/massimo/vehicle_infrastructure_calibration/visualize')
-from extrinsic_utils import implement_T_3dbox_object_list, convert_T_to_6DOF, convert_6DOF_to_T, implement_T_3dbox_n_8_3
+from extrinsic_utils import implement_T_3dbox_object_list, convert_T_to_6DOF, convert_6DOF_to_T, implement_T_3dbox_n_8_3, implement_T_to_3dbox_with_own_center
 import noise_utils
 from BBoxVisualizer_open3d_standardized import BBoxVisualizer_open3d_standardized
 import signal
@@ -227,8 +227,9 @@ class V2XSim_Reader:
             elif noise_type == 'von_mises':
                 noise_6DOF = noise_utils.generate_noise_von_mises(noise['pos_std'], noise['rot_std'], noise['pos_mean'], noise['rot_mean'])
 
-            T_noised_6DOF = convert_T_to_6DOF(T) + noise_6DOF
-            noised_bbox3d_object_list.append(BBox3d('car', implement_T_3dbox_n_8_3(convert_6DOF_to_T(T_noised_6DOF), bbox3d_object.get_bbox3d_8_3()), bbox3d_object.get_bbox2d_4(), bbox3d_object.get_occluded_state(), bbox3d_object.get_truncated_state(), bbox3d_object.get_alpha(), bbox3d_object.get_confidence()))
+            noised_bbox3d_8_3 = implement_T_to_3dbox_with_own_center(convert_6DOF_to_T(noise_6DOF), bbox3d_object.get_bbox3d_8_3())
+
+            noised_bbox3d_object_list.append(BBox3d('car', implement_T_3dbox_n_8_3(T, noised_bbox3d_8_3), bbox3d_object.get_bbox2d_4(), bbox3d_object.get_occluded_state(), bbox3d_object.get_truncated_state(), bbox3d_object.get_alpha(), bbox3d_object.get_confidence()))
 
         # print('noise', noise)
         # print('noise_6DOF', noise_6DOF)
@@ -290,6 +291,7 @@ class V2XSim_Reader:
                 else:
                     bbox3d_object_list_lidar1 = self.get_noised_3dbbox_object_list(T_lidar1_lidar, bbox3d_object_list_lidar, noise_type, noise)
                     bbox3d_object_list_lidar2 = self.get_noised_3dbbox_object_list(T_lidar2_lidar, bbox3d_object_list_lidar, noise_type, noise)
+                    # bbox3d_object_list_lidar2 = self.get_noised_3dbbox_object_list(T_lidar2_lidar, bbox3d_object_list_lidar, noise_type, {'pos_std':0.2, 'rot_std':0.2, 'pos_mean':0, 'rot_mean':0})             
                 
                 # converted_bbox3d_object_list_lidar1 = implement_T_3dbox_object_list(T_lidar2_lidar1, bbox3d_object_list_lidar1)
 
@@ -298,6 +300,70 @@ class V2XSim_Reader:
 
                 yield frame_idx, cav_ids[cav_id1], bbox3d_object_list_lidar1, bbox3d_object_list_lidar2, T_lidar2_lidar1
                 
+
+    def generate_vehicle_vehicle_bboxes_object_list_pointcloud(self, noise_type='gaussian', noise={'pos_std':0.2, 'rot_std':0.2, 'pos_mean':0, 'rot_mean':0}):
+
+        def signal_handler(sig, frame):
+            print("Exiting visualization...")
+            global should_exit
+            should_exit = True
+
+        signal.signal(signal.SIGINT, signal_handler)
+        global should_exit
+        should_exit = False
+
+        for frame_idx in range(len(self.dataset)):
+
+            if should_exit:
+                break
+
+            base_data_dict = self.dataset[frame_idx]
+            cav_content = base_data_dict[1]
+            # T_lidar_world = cav_content['params']['lidar_pose']
+            T_world_lidar = cav_content['params']['lidar_pose']
+            bounding_boxes_lidar, _ = generate_object_corners_v2x([cav_content], T_world_lidar)
+            bbox3d_object_list_lidar = self.get_3dbbox_object_list(bounding_boxes_lidar)
+
+            cav_ids = list(base_data_dict.keys())
+
+            # print('car_ids: ', cav_ids)
+
+            for cav_id1 in range(len(cav_ids) - 1):
+
+                if cav_id1 == 1: # 多车端在不限制每辆车视野的情况下没有意义，只取第一辆车 ，这样scene0 有100个场景，每个场景1次用掉
+                    break
+
+                if should_exit:
+                    break
+
+                cav_id2 = cav_id1 + 4
+                cav_content1 = base_data_dict[cav_ids[cav_id1]]
+                cav_content2 = base_data_dict[cav_ids[cav_id2]]
+                T_world_lidar1 = np.array(cav_content1['params']['lidar_pose'])
+                T_world_lidar2 = np.array(cav_content2['params']['lidar_pose'])
+
+                T_lidar1_lidar = np.linalg.inv(np.linalg.solve(T_world_lidar, T_world_lidar1))
+                T_lidar2_lidar = np.linalg.inv(np.linalg.solve(T_world_lidar, T_world_lidar2))
+                T_lidar2_lidar1 = np.dot(T_lidar2_lidar, np.linalg.inv(T_lidar1_lidar))
+
+                pointcloud1 = cav_content1['lidar_np']
+                pointcloud2 = cav_content2['lidar_np']
+
+                if noise_type == None:
+                    bbox3d_object_list_lidar1 = implement_T_3dbox_object_list(T_lidar1_lidar, bbox3d_object_list_lidar)
+                    bbox3d_object_list_lidar2 = implement_T_3dbox_object_list(T_lidar2_lidar, bbox3d_object_list_lidar)
+                else:
+                    bbox3d_object_list_lidar1 = self.get_noised_3dbbox_object_list(T_lidar1_lidar, bbox3d_object_list_lidar, noise_type, noise)
+                    bbox3d_object_list_lidar2 = self.get_noised_3dbbox_object_list(T_lidar2_lidar, bbox3d_object_list_lidar, noise_type, noise)
+                
+                # converted_bbox3d_object_list_lidar1 = implement_T_3dbox_object_list(T_lidar2_lidar1, bbox3d_object_list_lidar1)
+
+                # BBoxVisualizer_open3d_standardized('compare_original_converted', ['original', 'converted'], 2).visualize_matches_under_dual_true_predicted_scene(
+                #     [bbox3d_object_list_lidar1, bbox3d_object_list_lidar2], [converted_bbox3d_object_list_lidar1, bbox3d_object_list_lidar2], [], [], {}, {})
+
+                yield frame_idx, cav_ids[cav_id2], bbox3d_object_list_lidar1, bbox3d_object_list_lidar2, pointcloud1[:,:3], pointcloud2[:,:3], T_lidar2_lidar1
+                
+        
 
     def generate_gt_and_noised_bboxes_object_list(self, noise_type='gaussian', noise={'pos_std':0, 'rot_std':0, 'pos_mean':0, 'rot_mean':0}):
 

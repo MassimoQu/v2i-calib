@@ -6,6 +6,8 @@ import sys
 sys.path.append('./reader')
 sys.path.append('./process/utils')
 from CooperativeReader import CooperativeReader
+from VehicleReader import VehicleReader
+from Reader import Reader
 from CooperativeBatchingReader import CooperativeBatchingReader
 from Filter3dBoxes import Filter3dBoxes
 from extrinsic_utils import implement_T_points_n_3, implement_T_3dbox_object_list, get_reverse_T
@@ -31,18 +33,15 @@ class BBoxVisualizer_open3d_standardized():
         使用 Open3D 绘制 3D 框，并在框的中心添加一个文本标签。
         """
         lines = []
-        colors = [color for _ in range(12)]  # 每个框需要12条线
-        # 4个底部点
+        colors = [color for _ in range(12)]  
         bottom_points = [0, 1, 2, 3, 0]
         for i in range(4):
             lines.append([bottom_points[i], bottom_points[i + 1]])
 
-        # 4个顶部点
         top_points = [4, 5, 6, 7, 4]
         for i in range(4):
             lines.append([top_points[i], top_points[i + 1]])
 
-        # 从底部到顶部的4条线
         for i in range(4):
             lines.append([bottom_points[i], top_points[i]])
         lines = np.array(lines, dtype=np.int32)
@@ -52,7 +51,6 @@ class BBoxVisualizer_open3d_standardized():
         )
         line_set.colors = o3d.utility.Vector3dVector(colors)
 
-        # 计算框的几何中心
         if text_position == 'center': 
             position = np.mean(box3d, axis=0)
         elif text_position == 'left_bottom':
@@ -62,7 +60,6 @@ class BBoxVisualizer_open3d_standardized():
             print('Error: vis_id out of range during boxes drawing!')
             return
         
-        # 添加文本
         self.vis[vis_id].add_geometry(text, line_set)
         self.vis[vis_id].add_3d_label(position, text)
         # label.color = gui.Color(color[0], color[1], color[2])
@@ -133,3 +130,17 @@ class BBoxVisualizer_open3d_standardized():
 
         self.app.run()
         
+
+if __name__ == '__main__':
+    
+    # LIBGL_ALWAYS_SOFTWARE=1
+
+    # reader = VehicleReader('000001')
+    # vehicle_object_list = reader.get_vehicle_boxes_object_list()
+    # vehicle_pointcloud = reader.get_vehicle_pointcloud()
+
+    # BBoxVisualizer_open3d_standardized().visualize_matches_under_certain_scene([[], vehicle_object_list], [vehicle_pointcloud, []], {}, vis_id=0)
+
+    bbox3d_list = Reader().get_3dbbox_object_list("000010.json")
+    pointcloud = Reader().get_pointcloud("000010.bin")
+    BBoxVisualizer_open3d_standardized().visualize_matches_under_certain_scene([[], bbox3d_list], [pointcloud, []], {}, vis_id=0)
