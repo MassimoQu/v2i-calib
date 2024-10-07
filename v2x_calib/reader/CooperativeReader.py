@@ -9,7 +9,7 @@ from VehicleReader import VehicleReader
 
 
 class CooperativeReader():
-    def __init__(self, infra_file_name = '003920', vehicle_file_name = '020092', data_folder = './data/cooperative-vehicle-infrastructure'):
+    def __init__(self, infra_file_name = '003920', vehicle_file_name = '020092', data_folder = './data/DAIR-V2X'):
         self.infra_reader = InfraReader(infra_file_name, data_folder)
         self.vehicle_reader = VehicleReader(vehicle_file_name, data_folder)
 

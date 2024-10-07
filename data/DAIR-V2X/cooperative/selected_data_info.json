@@ -1,0 +1,13 @@
+[
+    {
+        "infrastructure_image_path": "infrastructure-side/image/001366.jpg",
+        "infrastructure_pointcloud_path": "infrastructure-side/velodyne/001366.pcd",
+        "vehicle_image_path": "vehicle-side/image/017314.jpg",
+        "vehicle_pointcloud_path": "vehicle-side/velodyne/017314.pcd",
+        "cooperative_label_path": "cooperative/label_world/017314.json",
+        "system_error_offset": {
+            "delta_x": -0.7,
+            "delta_y": -0.54
+        }
+    }
+]

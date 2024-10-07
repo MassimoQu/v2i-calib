@@ -149,9 +149,15 @@ After cloning this repo, please run:
 source setup.sh
 ```
 
-### Data Preparation
+### Minimal Test
+To test the sample, simply run the following command:
+```
+python test.py
+```
 
-For minimal testing, you can opt to download only the bounding box JSON files. However, to fully visualize point cloud registration, it's recommended to download the complete point cloud data.
+
+### Data Preparation
+For batch testing, additional data preparation is required. This process is also included in the test.py file.
 
 #### Download data and organize as follows
 
@@ -163,14 +169,7 @@ Download DAIR-V2X-C dataset [here](https://thudair.baai.ac.cn/coop-dtest) and or
 ├── cooperative-vehicle-infrastructure      # DAIR-V2X-C
     ├── infrastructure-side             # DAIR-V2X-C-I
         ├── velodyne                
-            ├── {id}.pcd           
-        ├── calib                 
-            ├── camera_intrinsic            
-                ├── {id}.json     
-            ├── virtuallidar_to_world   
-                ├── {id}.json      
-            ├── virtuallidar_to_camera  
-                ├── {id}.json      
+            ├── {id}.pcd   
         ├── label	
             ├── camera                  # Labeled data in Infrastructure Virtual LiDAR Coordinate System fitting objects in image based on image frame time
                 ├── {id}.json
@@ -179,16 +178,7 @@ Download DAIR-V2X-C dataset [here](https://thudair.baai.ac.cn/coop-dtest) and or
         ├── data_info.json              # Relevant index information of Infrastructure data
     ├── vehicle-side                    # DAIR-V2X-C-V
         ├── velodyne             
-            ├── {id}.pcd           
-        ├── calib                 
-            ├── camera_intrinsic   
-                ├── {id}.json
-            ├── lidar_to_camera   
-                ├── {id}.json
-            ├── lidar_to_novatel  
-                ├── {id}.json
-            ├── novatel_to_world   
-                ├── {id}.json
+            ├── {id}.pcd
         ├── label	
             ├── camera                  # Labeled data in Vehicle LiDAR Coordinate System fitting objects in image based on image frame time
                 ├── {id}.json
@@ -200,6 +190,7 @@ Download DAIR-V2X-C dataset [here](https://thudair.baai.ac.cn/coop-dtest) and or
             ├── {id}.json           
         ├── calib
             ├── lidar_i2v               # External Parameters from Infrastructure to Vehicle
+                ├── {id}.json           # Vehicle ID
         ├── data_info.json              # Relevant index information combined the Infrastructure 
         data and the Vehicle data
 ```
@@ -210,15 +201,6 @@ cd ${v2i-calib_root}/v2i-calib
 mkdir ./data/DAIR-V2X
 ln -s ${DAIR-V2X-C_DATASET_ROOT}/cooperative-vehicle-infrastructure ${v2i-calib_root}/v2i-calib/data/DAIR-V2X
 ```
-
-### Test
-
-Run the following commands for testing:
-```
-cd v2i-calib
-python test.py
-```
-
 
 
 ## Acknowledgment

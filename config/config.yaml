@@ -2,7 +2,7 @@ data:
   type: DAIR-V2X # V2X-Sim
 
   # if the dataset is DAIR-V2X
-  data_root_path: /mnt/c/Users/10612/Downloads/cooperative_data/cooperative-vehicle-infrastructure
+  data_root_path: ./data/DAIR-V2X/
   
   data_info_path: ./data/DAIR-V2X/cooperative/selected_data_info.json
 

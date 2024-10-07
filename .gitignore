@@ -1,7 +1,7 @@
 # *.csv
 
-Log/
-new_clean_result/
+# Log/
+# new_clean_result/
 
 # Log/group
 
@@ -167,7 +167,7 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
-data/
+# data/
 result/
 
 ```

@@ -8,7 +8,7 @@ from Reader import Reader
 from read_utils import read_json
 
 class VehicleReader(Reader):
-    def __init__(self, vehicle_file_name, data_folder = './data/cooperative-vehicle-infrastructure'):
+    def __init__(self, vehicle_file_name, data_folder = './data/DAIR-V2X'):
         super().__init__(data_folder)
         self.vehicle_file_name = vehicle_file_name
 

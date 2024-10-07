@@ -12,7 +12,7 @@ from BBox3d import BBox3d
 
 
 class Reader():
-    def __init__(self, data_folder = './data/cooperative-vehicle-infrastructure', cfg_ = cfg):
+    def __init__(self, data_folder = './data/DAIR-V2X', cfg_ = cfg):
         self.data_folder = data_folder
         self.cfg = cfg_
 

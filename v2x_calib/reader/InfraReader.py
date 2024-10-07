@@ -8,7 +8,7 @@ from read_utils import read_json
 from utils import convert_Rt_to_T
 
 class InfraReader(Reader):
-    def __init__(self, infra_file_name, data_folder = './data/cooperative-vehicle-infrastructure'):
+    def __init__(self, infra_file_name, data_folder = './data/DAIR-V2X'):
         super().__init__(data_folder)
         self.infra_file_name = infra_file_name
         
