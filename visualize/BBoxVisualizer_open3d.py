@@ -1,20 +1,15 @@
 import numpy as np
 import open3d as o3d
 import sys
-sys.path.append('./reader')
-sys.path.append('./process/utils')
-sys.path.append('./process/corresponding')
-sys.path.append('./process/search')
-from Matches2Extrinsics import Matches2Extrinsics
-from BoxesMatch import BoxesMatch
-from CooperativeReader import CooperativeReader
-from CooperativeBatchingReader import CooperativeBatchingReader
-from Filter3dBoxes import Filter3dBoxes
-from Reader import Reader
-from test_V2XSim import V2XSim_Reader
-from extrinsic_utils import implement_T_points_n_3, implement_T_3dbox_object_list, get_reverse_T
-from extrinsic_utils import convert_6DOF_to_T, get_RE_TE_by_compare_T_6DOF_result_true, convert_T_to_6DOF
-
+from pathlib import Path
+sys.path.append(str(Path(__file__).parent.parent))
+from v2x_calib.search import Matches2Extrinsics
+from v2x_calib.reader import V2XSim_Reader
+from v2x_calib.reader import CooperativeReader
+from v2x_calib.reader import CooperativeBatchingReader
+from v2x_calib.corresponding import BoxesMatch
+from v2x_calib.utils import implement_T_3dbox_object_list, implement_T_points_n_3, get_reverse_T, convert_6DOF_to_T, get_RE_TE_by_compare_T_6DOF_result_true, convert_T_to_6DOF
+from v2x_calib.preprocess import Filter3dBoxes
 
 class BBoxVisualizer_open3d():
 
@@ -190,7 +185,7 @@ if '__main__' == __name__:
 
     reader = V2XSim_Reader() 
 
-    corresponding_strategy = ['centerpoint_distance','vertex_distance']
+    core_similarity_component = ['centerpoint_distance','vertex_distance']
     matches_filter_strategy = 'threshold'
 
     for frame_idx, cav_id, bbox3d_object_list_lidar1, bbox3d_object_list_lidar2, pointcloud1, pointcloud2, T_lidar2_lidar1 in reader.generate_vehicle_vehicle_bboxes_object_list_pointcloud(noise={'pos_std':1, 'rot_std':0, 'pos_mean':0, 'rot_mean':0}):
@@ -200,7 +195,7 @@ if '__main__' == __name__:
 
         print(f"frame_idx: {frame_idx}, cav_id: {cav_id}")
 
-        matches_with_score_list = BoxesMatch(bbox3d_object_list_lidar1, bbox3d_object_list_lidar2, corresponding_strategy=corresponding_strategy).get_matches_with_score()
+        matches_with_score_list = BoxesMatch(bbox3d_object_list_lidar1, bbox3d_object_list_lidar2, core_similarity_component=core_similarity_component).get_matches_with_score()
         T_calculated = Matches2Extrinsics(bbox3d_object_list_lidar1, bbox3d_object_list_lidar2, matches_score_list = matches_with_score_list).get_combined_extrinsic(matches_filter_strategy = matches_filter_strategy)
 
         RE, TE = get_RE_TE_by_compare_T_6DOF_result_true(convert_T_to_6DOF(T_lidar2_lidar1), T_calculated)

@@ -8,7 +8,9 @@
         "./process/graph",
         "./process/search",
         "./traditional_registration",
-        "./plot"
+        "./plot",
+        "./process/preprocess",
+        "./v2x_calib"
     ],
     "files.associations": {
         "cctype": "cpp",

@@ -1,0 +1,49 @@
+data: 
+  type: DAIR-V2X
+
+  # if the dataset is DAIR-V2X
+  data_root_path: /mnt/c/Users/10612/Downloads/cooperative_data/cooperative-vehicle-infrastructure
+  
+  # data_info_path: /home/massimo/vehicle_infrastructure_calibration/v2x_calib/dataset_division/easy_data_info.json
+  # data_info_path: /home/massimo/vehicle_infrastructure_calibration/v2x_calib/dataset_division/hard_data_info.json
+  data_info_path: ./data/cooperative-vehicle-infrastructure/cooperative/selected_data_info.json
+
+  # if the dataset is V2X-Sim
+  noise:
+    pos_std: 0
+    rot_std: 0
+    pos_mean: 0
+    rot_mean: 0
+
+v2x_calib:
+  filter_num: 10
+  distance_threshold: 
+    truck: 1.5
+    van: 1.5
+    bus: 1.5
+    car: 1
+    trafficcone: 0.5
+    pedestrian: 0.5
+    cyclist: 0.5
+    motorcyclist: 0.5
+    tricylist: 0.5
+    barrawlist: 0.5
+
+  # iou  centerpoint_distance  vertex_distance
+  core_similarity_component_list:
+    - centerpoint_distance
+    - vertex_distance
+    # - iou
+
+# core length angle category
+  similarity_strategy: 
+    - category
+    - core
+    # - length
+    # - angle
+
+  # trueRetained topRetained thresholdRetained allRetained
+  matches_filter_strategy: allRetained
+  filter_threshold: 4
+  # evenSVD  weightedSVD
+  matches2extrinsic_strategies: evenSVD

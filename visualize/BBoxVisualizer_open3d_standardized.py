@@ -3,15 +3,14 @@ import open3d as o3d
 import open3d.visualization.gui as gui # type: ignore
 import matplotlib.cm as cm
 import sys
-sys.path.append('./reader')
-sys.path.append('./process/utils')
-from CooperativeReader import CooperativeReader
-from VehicleReader import VehicleReader
-from Reader import Reader
-from CooperativeBatchingReader import CooperativeBatchingReader
-from Filter3dBoxes import Filter3dBoxes
-from extrinsic_utils import implement_T_points_n_3, implement_T_3dbox_object_list, get_reverse_T
-from extrinsic_utils import convert_6DOF_to_T
+from pathlib import Path
+sys.path.append(str(Path(__file__).parent.parent))
+from v2x_calib import CooperativeReader
+from v2x_calib import VehicleReader
+from v2x_calib import Reader
+from v2x_calib import CooperativeBatchingReader
+from v2x_calib import Filter3dBoxes
+from v2x_calib import implement_T_points_n_3, implement_T_3dbox_object_list, get_reverse_T, convert_6DOF_to_T
 
 
 class BBoxVisualizer_open3d_standardized():
@@ -135,12 +134,8 @@ if __name__ == '__main__':
     
     # LIBGL_ALWAYS_SOFTWARE=1
 
-    # reader = VehicleReader('000001')
-    # vehicle_object_list = reader.get_vehicle_boxes_object_list()
-    # vehicle_pointcloud = reader.get_vehicle_pointcloud()
+    reader = VehicleReader('000001')
+    vehicle_object_list = reader.get_vehicle_boxes_object_list()
+    vehicle_pointcloud = reader.get_vehicle_pointcloud()
 
-    # BBoxVisualizer_open3d_standardized().visualize_matches_under_certain_scene([[], vehicle_object_list], [vehicle_pointcloud, []], {}, vis_id=0)
-
-    bbox3d_list = Reader().get_3dbbox_object_list("000010.json")
-    pointcloud = Reader().get_pointcloud("000010.bin")
-    BBoxVisualizer_open3d_standardized().visualize_matches_under_certain_scene([[], bbox3d_list], [pointcloud, []], {}, vis_id=0)
+    BBoxVisualizer_open3d_standardized().visualize_matches_under_certain_scene([[], vehicle_object_list], [vehicle_pointcloud, []], {}, vis_id=0)

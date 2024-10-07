@@ -9,7 +9,7 @@ sys.path.append('./reader')
 sys.path.append('./process/utils')
 from CooperativeReader import CooperativeReader
 from CooperativeBatchingReader import CooperativeBatchingReader
-from extrinsic_utils import implement_T_points_n_3
+from utils import implement_T_points_n_3
 
 
 def project_points_to_image(points, intrinsics, image, boxes_object_list = None):

@@ -1,10 +1,12 @@
-import sys
 import time
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).parent.parent))
 
 sys.path.append('./reader')
 sys.path.append('./process/utils')
 
-from extrinsic_utils import get_reverse_T, implement_T_3dbox_object_list, implement_T_points_n_3
+from utils import get_reverse_T, implement_T_3dbox_object_list, implement_T_points_n_3
 from CooperativeReader import CooperativeReader
 from CooperativeBatchingReader import CooperativeBatchingReader
 from BBoxVisualizer_open3d import BBoxVisualizer_open3d
@@ -175,7 +177,7 @@ class ConsecutiveVisualizer:
         # 关闭视窗
         vis.destroy_window()
 
-
-# ConsecutiveVisualizer(3920, 20092, 200).visualize()
-ConsecutiveVisualizer().visualize_file_sequence()
+if __name__ == '__main__':
+    # ConsecutiveVisualizer(3920, 20092, 200).visualize()
+    ConsecutiveVisualizer().visualize_file_sequence()
 

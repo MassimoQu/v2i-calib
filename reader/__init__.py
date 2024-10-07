@@ -1,1 +1,0 @@
-from CooperativeReader import CooperativeReader
