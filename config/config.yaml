@@ -1,12 +1,10 @@
 data: 
-  type: DAIR-V2X
+  type: DAIR-V2X # V2X-Sim
 
   # if the dataset is DAIR-V2X
   data_root_path: /mnt/c/Users/10612/Downloads/cooperative_data/cooperative-vehicle-infrastructure
   
-  # data_info_path: /home/massimo/vehicle_infrastructure_calibration/v2x_calib/dataset_division/easy_data_info.json
-  # data_info_path: /home/massimo/vehicle_infrastructure_calibration/v2x_calib/dataset_division/hard_data_info.json
-  data_info_path: ./data/cooperative-vehicle-infrastructure/cooperative/selected_data_info.json
+  data_info_path: ./data/DAIR-V2X/cooperative/selected_data_info.json
 
   # if the dataset is V2X-Sim
   noise:

@@ -1,19 +1,18 @@
 # V2I-CALIB/V2I-CALIB++: An Object-Level, Real-Time Point Cloud Global Registration Framework for V2I/V2X Applications
 
+<h3 align="center">
+  <a href="https://arxiv.org/abs/2407.10195">V2X-Calib arXiv</a> 
+</h3>
+
 <div align="center">
     <img src="./static/images/V2I-CALIB++_workflow.png" alt="V2I-CALIB++_Workflow" width="88%">
   </div>
 
-<h3 align="center">
-  <a href="https://arxiv.org/abs/2204.05575">V2X-Calib arXiv</a> 
-</h3>
+## Highlight
 
-## Table of Contents:
-1. [News](#news)
-2. [Experimental Comparison](#experimental-comparison)
-3. [Getting Started](#getting-started)
-4. [Acknowledgement](#acknowledgment)
-5. [Citation](#citation)
+* An initial-value-free online calibration method for vehicle-road multi-end scenarios is proposed, based on perception objects;
+* A new multi-end target association method is proposed, which fully explores spatial associations in the scene without positioning priors;
+* oIoU and oDist both enable real-time monitoring of external parameters in the scene.
 
 
 ## News
@@ -24,7 +23,7 @@
 
 We conducted experiments comparing V2I-Calib and V2I-Calib++ against well-performed point cloud Global Registration methods, using two widely recognized V2X datasets: DAIR-V2X and V2X-Sim. The results are as follows.
 
-* <a href="https://github.com/ai4ce/V2X-Sim">V2X-Sim</a> (Homologous LiDARs)
+* <a href="https://github.com/ai4ce/V2X-Sim">V2X-Sim</a> (Synchronous Homologous LiDARs)
     <div align="left">
     <table>
         <tr align="center">
@@ -81,7 +80,7 @@ We conducted experiments comparing V2I-Calib and V2I-Calib++ against well-perfor
     </table>
     </div>
     <h6>* Note: @λ indicates the threshold for success rate</h6>
-* <a href="https://github.com/AIR-THU/DAIR-V2X">DAIR-V2X</a> (Heterogeneous LiDARs)
+* <a href="https://github.com/AIR-THU/DAIR-V2X">DAIR-V2X</a> (Asynchronous Heterogeneous LiDARs)
     <div align="left">
     <table>
         <tr align="center">
@@ -142,7 +141,85 @@ We conducted experiments comparing V2I-Calib and V2I-Calib++ against well-perfor
 
 ## Getting Started
 
-#TODO
+### Installation
+This code is mainly developed under Ubuntu 20.04. We use anaconda3 with Python 3.8 as the base Python setup.
+
+After cloning this repo, please run:
+```
+source setup.sh
+```
+
+### Data Preparation
+
+For minimal testing, you can opt to download only the bounding box JSON files. However, to fully visualize point cloud registration, it's recommended to download the complete point cloud data.
+
+#### Download data and organize as follows
+
+Download DAIR-V2X-C dataset [here](https://thudair.baai.ac.cn/coop-dtest) and organize as follows:
+
+```
+
+# For DAIR-V2X-C Dataset located at ${DAIR-V2X-C_DATASET_ROOT}
+├── cooperative-vehicle-infrastructure      # DAIR-V2X-C
+    ├── infrastructure-side             # DAIR-V2X-C-I
+        ├── velodyne                
+            ├── {id}.pcd           
+        ├── calib                 
+            ├── camera_intrinsic            
+                ├── {id}.json     
+            ├── virtuallidar_to_world   
+                ├── {id}.json      
+            ├── virtuallidar_to_camera  
+                ├── {id}.json      
+        ├── label	
+            ├── camera                  # Labeled data in Infrastructure Virtual LiDAR Coordinate System fitting objects in image based on image frame time
+                ├── {id}.json
+            ├── virtuallidar            # Labeled data in Infrastructure Virtual LiDAR Coordinate System fitting objects in point cloud based on point cloud frame time
+                ├── {id}.json
+        ├── data_info.json              # Relevant index information of Infrastructure data
+    ├── vehicle-side                    # DAIR-V2X-C-V
+        ├── velodyne             
+            ├── {id}.pcd           
+        ├── calib                 
+            ├── camera_intrinsic   
+                ├── {id}.json
+            ├── lidar_to_camera   
+                ├── {id}.json
+            ├── lidar_to_novatel  
+                ├── {id}.json
+            ├── novatel_to_world   
+                ├── {id}.json
+        ├── label	
+            ├── camera                  # Labeled data in Vehicle LiDAR Coordinate System fitting objects in image based on image frame time
+                ├── {id}.json
+            ├── lidar                   # Labeled data in Vehicle LiDAR Coordinate System fitting objects in point cloud based on point cloud frame time
+                ├── {id}.json
+        ├── data_info.json              # Relevant index information of the Vehicle data
+    ├── cooperative                     # Coopetative Files
+        ├── label_world                 # Vehicle-Infrastructure Cooperative (VIC) Annotation files
+            ├── {id}.json           
+        ├── calib
+            ├── lidar_i2v               # External Parameters from Infrastructure to Vehicle
+        ├── data_info.json              # Relevant index information combined the Infrastructure 
+        data and the Vehicle data
+```
+
+#### Create a symlink to the dataset root
+```
+cd ${v2i-calib_root}/v2i-calib
+mkdir ./data/DAIR-V2X
+ln -s ${DAIR-V2X-C_DATASET_ROOT}/cooperative-vehicle-infrastructure ${v2i-calib_root}/v2i-calib/data/DAIR-V2X
+```
+
+### Test
+
+Run the following commands for testing:
+```
+cd v2i-calib
+python test.py
+```
+
+
 
 ## Acknowledgment
 

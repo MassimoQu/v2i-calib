@@ -1,10 +1,9 @@
 # *.csv
 
-# Log/
-# validate/
-# new_clean_result/
+Log/
+new_clean_result/
 
-Log/group
+# Log/group
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

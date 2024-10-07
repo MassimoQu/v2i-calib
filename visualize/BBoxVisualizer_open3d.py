@@ -46,9 +46,9 @@ class BBoxVisualizer_open3d():
     def plot_boxes3d_pointcloud(self, boxes3d_object_list, pointcloud):
         self.plot_boxes3d_lists_pointcloud_lists([boxes3d_object_list], [pointcloud], [[(1, 0, 0)], [(0, 1, 0)]])
 
-    def plot_boxes3d_lists_pointcloud_lists(self, boxes_lists, pointclouds_list, boxes_color_list):
+    def plot_boxes3d_lists_pointcloud_lists(self, boxes_lists, pointclouds_list, boxes_color_list, win_name = 'point cloud with bbox'):
         vis = o3d.visualization.Visualizer()
-        vis.create_window()
+        vis.create_window(window_name=win_name)
         # 绘制点云
         pointcloud_colors = [(0.5, 0, 0), (0, 0.5, 0)]
         # pointcloud_colors = [(0, 0.25, 0), (0.25, 0, 0)]
