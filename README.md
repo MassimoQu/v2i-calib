@@ -152,11 +152,11 @@ source setup.sh
 ### Minimal Test
 To test the sample, simply run the following command:
 ```
-python test.py --test-type single 
+python test.py --test_type single 
 ```
 
 
-### Data Preparation
+### Batch Test
 For batch testing, additional data preparation is required. This process is also included in the test.py file.
 
 #### Download data and organize as follows
@@ -203,10 +203,17 @@ mkdir ./data/DAIR-V2X
 ln -s ${DAIR-V2X-C_DATASET_ROOT}/cooperative-vehicle-infrastructure ${v2i-calib_root}/v2i-calib/data/DAIR-V2X
 ```
 
-#### Batch Test
+#### Run Test Command
+
 ```
-python test.py --test-type batch
+python test.py --test_type batch
 ```
+The results are detailed in `Log/xx.log`. Execute `Log/analyze.py` to analyze the batch test results. The final results will be available in `analysis_results.csv`. You will find these results to be superior to those previously discussed or those presented in the paper :-) 
+
+
+### Explanation of Key Configuration Parameters
+
+The configuration parameters are located in `config/config.yaml`. To use the oIoU metric, set `core_similarity_component_list = [iou]`. To use the oDist metric, set `core_similarity_component_list = [centerpoint_distance, vertex_distance]`
 
 
 ## Acknowledgment
