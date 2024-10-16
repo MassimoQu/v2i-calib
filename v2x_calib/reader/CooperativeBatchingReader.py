@@ -3,8 +3,9 @@ from .CooperativeReader import CooperativeReader
 
 
 class CooperativeBatchingReader:
-    def __init__(self, path_data_info = f'./data/cooperative-vehicle-infrastructure/cooperative/data_info.json'):
+    def __init__(self, path_data_info = f'./data/DAIR-V2X/cooperative/data_info.json'):
         self.path_data_info = path_data_info
+        self.path_data_folder = '/'.join(path_data_info.split('/')[:-2])
         
         self.infra_file_names, self.vehicle_file_names = self.get_infra_vehicle_file_names(self.path_data_info)
 
@@ -34,7 +35,7 @@ class CooperativeBatchingReader:
         infra_file_names = self.infra_file_names[start_idx:end_idx]
         vehicle_file_names = self.vehicle_file_names[start_idx:end_idx]
         for infra_file_name, vehicle_file_name in zip(infra_file_names, vehicle_file_names):
-            self.cooperative_reader = CooperativeReader(infra_file_name, vehicle_file_name)
+            self.cooperative_reader = CooperativeReader(infra_file_name, vehicle_file_name, self.path_data_folder)
             inf_bbox_object_list, veh_bbox_object_list = self.cooperative_reader.get_cooperative_infra_vehicle_boxes_object_list()
             yield infra_file_name, vehicle_file_name, inf_bbox_object_list, veh_bbox_object_list, self.cooperative_reader.get_cooperative_T_i2v()
 
@@ -49,7 +50,7 @@ class CooperativeBatchingReader:
         infra_file_names = self.infra_file_names[start_idx:end_idx]
         vehicle_file_names = self.vehicle_file_names[start_idx:end_idx]
         for infra_file_name, vehicle_file_name in zip(infra_file_names, vehicle_file_names):
-            self.cooperative_reader = CooperativeReader(infra_file_name, vehicle_file_name)
+            self.cooperative_reader = CooperativeReader(infra_file_name, vehicle_file_name, self.path_data_folder)
             inf_bbox_object_list, veh_bbox_object_list = self.cooperative_reader.get_cooperative_infra_vehicle_boxes_object_list()
             yield infra_file_name, vehicle_file_name, inf_bbox_object_list, veh_bbox_object_list, self.cooperative_reader.get_cooperative_camera_T_i2v()
 
@@ -64,7 +65,7 @@ class CooperativeBatchingReader:
         infra_file_names = self.infra_file_names[start_idx:end_idx]
         vehicle_file_names = self.vehicle_file_names[start_idx:end_idx]
         for infra_file_name, vehicle_file_name in zip(infra_file_names, vehicle_file_names):
-            self.cooperative_reader = CooperativeReader(infra_file_name, vehicle_file_name)
+            self.cooperative_reader = CooperativeReader(infra_file_name, vehicle_file_name, self.path_data_folder)
             inf_bbox_object_list, veh_bbox_object_list = self.cooperative_reader.get_cooperative_infra_vehicle_boxes_object_list_predicted()
             try:
                 yield infra_file_name, vehicle_file_name, inf_bbox_object_list, veh_bbox_object_list, self.cooperative_reader.get_cooperative_T_i2v()
@@ -84,7 +85,7 @@ class CooperativeBatchingReader:
         infra_file_names = self.infra_file_names[start_idx:end_idx]
         vehicle_file_names = self.vehicle_file_names[start_idx:end_idx]
         for infra_file_name, vehicle_file_name in zip(infra_file_names, vehicle_file_names):
-            self.cooperative_reader = CooperativeReader(infra_file_name, vehicle_file_name)
+            self.cooperative_reader = CooperativeReader(infra_file_name, vehicle_file_name, self.path_data_folder)
             inf_bbox_object_list, veh_bbox_object_list = self.cooperative_reader.get_cooperative_infra_vehicle_boxes_object_list_cooperative_fusioned()
             yield infra_file_name, vehicle_file_name, inf_bbox_object_list, veh_bbox_object_list, self.cooperative_reader.get_cooperative_T_i2v()
 
@@ -100,7 +101,7 @@ class CooperativeBatchingReader:
         infra_file_names = self.infra_file_names[start_idx:end_idx]
         vehicle_file_names = self.vehicle_file_names[start_idx:end_idx]
         for infra_file_name, vehicle_file_name in zip(infra_file_names, vehicle_file_names):
-            self.cooperative_reader = CooperativeReader(infra_file_name, vehicle_file_name)
+            self.cooperative_reader = CooperativeReader(infra_file_name, vehicle_file_name, self.path_data_folder)
             inf_bbox_object_list, veh_bbox_object_list = self.cooperative_reader.get_cooperative_infra_vehicle_boxes_object_list_predicted()
             inf_pointcloud, veh_pointcloud = self.cooperative_reader.get_cooperative_infra_vehicle_pointcloud()
             try:
@@ -121,7 +122,7 @@ class CooperativeBatchingReader:
     #     infra_file_names = self.infra_file_names[start_idx:end_idx]
     #     vehicle_file_names = self.vehicle_file_names[start_idx:end_idx]
     #     for infra_file_name, vehicle_file_name in zip(infra_file_names, vehicle_file_names):
-    #         self.cooperative_reader = CooperativeReader(infra_file_name, vehicle_file_name)
+    #         self.cooperative_reader = CooperativeReader(infra_file_name, vehicle_file_name, self.path_data_folder)
     #         inf_bbox_object_list, veh_bbox_object_list = self.cooperative_reader.get_cooperative_infra_vehicle_boxes_object_list_cooperative_fusioned()
     #         yield infra_file_name, vehicle_file_name, *self.cooperative_reader.get_cooperative_infra_vehicle_boxes_object_list(), *self.cooperative_reader.get_cooperative_infra_vehicle_boxes_object_list_cooperative_fusioned(), *self.cooperative_reader.get_cooperative_infra_vehicle_pointcloud(), self.cooperative_reader.get_cooperative_T_i2v()
 
@@ -136,7 +137,7 @@ class CooperativeBatchingReader:
     #     infra_file_names = self.infra_file_names[start_idx:end_idx]
     #     vehicle_file_names = self.vehicle_file_names[start_idx:end_idx]
     #     for infra_file_name, vehicle_file_name in zip(infra_file_names, vehicle_file_names):
-    #         self.cooperative_reader = CooperativeReader(infra_file_name, vehicle_file_name)
+    #         self.cooperative_reader = CooperativeReader(infra_file_name, vehicle_file_name, self.path_data_folder)
     #         inf_pointcloud, veh_pointcloud = self.cooperative_reader.get_cooperative_infra_vehicle_pointcloud()
     #         try:
     #             yield infra_file_name, vehicle_file_name, *self.cooperative_reader.get_cooperative_infra_vehicle_boxes_object_list(),*self.cooperative_reader.get_cooperative_infra_vehicle_boxes_object_list_predicted(), *self.cooperative_reader.get_cooperative_infra_vehicle_pointcloud(), self.cooperative_reader.get_cooperative_T_i2v()
@@ -156,7 +157,7 @@ class CooperativeBatchingReader:
         infra_file_names = self.infra_file_names[start_idx:end_idx]
         vehicle_file_names = self.vehicle_file_names[start_idx:end_idx]
         for infra_file_name, vehicle_file_name in zip(infra_file_names, vehicle_file_names):
-            self.cooperative_reader = CooperativeReader(infra_file_name, vehicle_file_name)
+            self.cooperative_reader = CooperativeReader(infra_file_name, vehicle_file_name, self.path_data_folder)
             try:
                 inf_pointcloud, veh_pointcloud = self.cooperative_reader.get_cooperative_infra_vehicle_pointcloud()
                 yield infra_file_name, vehicle_file_name, inf_pointcloud, veh_pointcloud, self.cooperative_reader.get_cooperative_T_i2v()
@@ -176,7 +177,7 @@ class CooperativeBatchingReader:
     #     infra_file_names = self.infra_file_names[start_idx:end_idx]
     #     vehicle_file_names = self.vehicle_file_names[start_idx:end_idx]
     #     for infra_file_name, vehicle_file_name in zip(infra_file_names, vehicle_file_names):
-    #         self.cooperative_reader = CooperativeReader(infra_file_name, vehicle_file_name)
+    #         self.cooperative_reader = CooperativeReader(infra_file_name, vehicle_file_name, self.path_data_folder)
     #         inf_pointcloud, veh_pointcloud = self.cooperative_reader.get_cooperative_infra_vehicle_pointcloud()
     #         yield infra_file_name, vehicle_file_name, *self.cooperative_reader.get_cooperative_infra_vehicle_boxes_object_list(), *self.cooperative_reader.get_cooperative_infra_vehicle_pointcloud(), self.cooperative_reader.get_cooperative_T_i2v()
 
@@ -191,7 +192,7 @@ class CooperativeBatchingReader:
     #     infra_file_names = self.infra_file_names[start_idx:end_idx]
     #     vehicle_file_names = self.vehicle_file_names[start_idx:end_idx]
     #     for infra_file_name, vehicle_file_name in zip(infra_file_names, vehicle_file_names):
-    #         self.cooperative_reader = CooperativeReader(infra_file_name, vehicle_file_name)
+    #         self.cooperative_reader = CooperativeReader(infra_file_name, vehicle_file_name, self.path_data_folder)
     #         inf_pointcloud, veh_pointcloud = self.cooperative_reader.get_cooperative_infra_vehicle_pointcloud()
     #         yield infra_file_name, vehicle_file_name, *self.cooperative_reader.get_cooperative_infra_vehicle_image()
 
@@ -206,7 +207,7 @@ class CooperativeBatchingReader:
     #     infra_file_names = self.infra_file_names[start_idx:end_idx]
     #     vehicle_file_names = self.vehicle_file_names[start_idx:end_idx]
     #     for infra_file_name, vehicle_file_name in zip(infra_file_names, vehicle_file_names):
-    #         self.cooperative_reader = CooperativeReader(infra_file_name, vehicle_file_name)
+    #         self.cooperative_reader = CooperativeReader(infra_file_name, vehicle_file_name, self.path_data_folder)
     #         inf_pointcloud, veh_pointcloud = self.cooperative_reader.get_cooperative_infra_vehicle_pointcloud()
     #         yield infra_file_name, vehicle_file_name, *self.cooperative_reader.get_cooperative_infra_vehicle_boxes_object_list(), *self.cooperative_reader.get_cooperative_infra_vehicle_image(), self.cooperative_reader.get_cooperative_T_i2v()
 
@@ -221,6 +222,6 @@ class CooperativeBatchingReader:
     #     infra_file_names = self.infra_file_names[start_idx:end_idx]
     #     vehicle_file_names = self.vehicle_file_names[start_idx:end_idx]
     #     for infra_file_name, vehicle_file_name in zip(infra_file_names, vehicle_file_names):
-    #         self.cooperative_reader = CooperativeReader(infra_file_name, vehicle_file_name)
+    #         self.cooperative_reader = CooperativeReader(infra_file_name, vehicle_file_name, self.path_data_folder)
     #         inf_pointcloud, veh_pointcloud = self.cooperative_reader.get_cooperative_infra_vehicle_pointcloud()
     #         yield infra_file_name, vehicle_file_name, *self.cooperative_reader.get_cooperative_infra_vehicle_boxes_object_list(), *self.cooperative_reader.get_cooperative_infra_vehicle_pointcloud(), *self.cooperative_reader.get_cooperative_infra_vehicle_image(), self.cooperative_reader.get_cooperative_T_i2v()

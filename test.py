@@ -184,9 +184,16 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', type=str, default='./config/config.yaml')
+    parser.add_argument('--test_type', type=str, default='single', help='single or batch')
+    parser.add_argument('--inf_id', type=str, default='001366')
+    parser.add_argument('--veh_id', type=str, default='017314')
     args = parser.parse_args()
     cfg_from_yaml_file(os.path.join(cfg.ROOT_DIR, args.config), cfg)
 
-    # batching_test_extrisic_from_two_box_object_list(cfg = cfg)
-    test_solo_with_dataset(cfg, '001366', '017314')
+    if args.test_type == 'single':
+        test_solo_with_dataset(cfg, args.inf_id, args.veh_id)
+    elif args.test_type == 'batch':
+        batching_test_extrisic_from_two_box_object_list(cfg = cfg)
+    else:
+        print('Invalid test_type, please choose single or batch')
 
