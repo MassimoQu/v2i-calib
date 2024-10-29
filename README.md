@@ -237,7 +237,7 @@ If you find our work or this repo useful, please cite:
 ```
 @article{qu2024v2iplus,
   title={V2I-Calib++: A Multi-terminal Spatial Calibration Approach in Urban Intersections for Collaborative Perception},
-  author={Qianxin Qu and Xinyu Zhang and Yijin Xiong and Shichun Guo and Ziqiang Song and Jun Li},
+  author={Qu, Qianxin and Zhang, Xinyu and Xiong, Yijin and Guo, Shichun and Song, Ziqiang and Li, Jun},
   journal={arXiv preprint arXiv:2410.11008},
   year={2024}
 }
