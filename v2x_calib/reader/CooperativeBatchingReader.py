@@ -3,9 +3,11 @@ from .CooperativeReader import CooperativeReader
 
 
 class CooperativeBatchingReader:
-    def __init__(self, path_data_info = f'./data/DAIR-V2X/cooperative/data_info.json'):
+    def __init__(self, path_data_info = f'./data/DAIR-V2X/cooperative/data_info.json', path_data_folder = None):
         self.path_data_info = path_data_info
-        self.path_data_folder = '/'.join(path_data_info.split('/')[:-2])
+        self.path_data_folder = path_data_folder
+        if path_data_folder is None:
+            self.path_data_folder = '/'.join(path_data_info.split('/')[:-2])
         
         self.infra_file_names, self.vehicle_file_names = self.get_infra_vehicle_file_names(self.path_data_info)
 

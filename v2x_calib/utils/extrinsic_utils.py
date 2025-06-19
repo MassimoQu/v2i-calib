@@ -151,6 +151,51 @@ def get_extrinsic_from_two_points(points1, points2):
 
     return T
 
+def get_extrinsic_from_two_points_svd_without_match(points1, points2):
+    """
+    Estimate extrinsic transformation (4x4) between two point sets using
+    the 'double SVD left singular vector' method:
+      R = U2 * U1.T
+    where U1, U2 are the left singular matrices from SVD of centered point clouds.
+    
+    :param points1: (N, 3) array of source points
+    :param points2: (M, 3) array of target points (M can differ from N)
+    :return: 4x4 homogeneous transformation matrix T
+    """
+    # Compute centroids
+    centroid1 = np.mean(points1, axis=0, keepdims=True)
+    centroid2 = np.mean(points2, axis=0, keepdims=True)
+    
+    # Center the point clouds
+    A = points1 - centroid1
+    B = points2 - centroid2
+    
+    # Compute SVD on each centered point cloud (treating them as 3xN and 3xM matrices)
+    # Transpose so shape is (3, N) and (3, M)
+    U1, _, _ = np.linalg.svd(A.T, full_matrices=False)
+    U2, _, _ = np.linalg.svd(B.T, full_matrices=False)
+    
+    # Rotation via left singular vectors
+    R = U2 @ U1.T
+    
+    # Reflection correction
+    if np.linalg.det(R) < 0:
+        # Flip sign of the third column of U2
+        U2[:, 2] *= -1
+        R = U2 @ U1.T
+    
+    # Translation
+    t = (centroid2.flatten() - R @ centroid1.flatten())
+    
+    # Assemble homogeneous matrix
+    T = np.eye(4)
+    T[:3, :3] = R
+    T[:3, 3] = t
+    
+    return T
+
+
+
 def get_extrinsic_from_two_points_weighted(points1, points2, weights):
     # 确保权重的长度与点的数量相同
     assert points1.shape == points2.shape
@@ -188,10 +233,81 @@ def get_extrinsic_from_two_points_weighted(points1, points2, weights):
 
     return T
 
-def get_extrinsic_from_two_3dbox_object(box_object_1, box_object_2):
+
+
+
+def get_extrinsic_from_two_points_weighted_svd_without_match(points1, points2, weights):
+    """
+    Estimate extrinsic transformation (4x4) between two point sets using
+    the weighted 'double SVD left singular vector' method:
+      R = U2 @ U1.T
+    where U1, U2 are the left singular matrices from SVD of weighted, centered point clouds.
+    
+    :param points1: (N, 3) array of source points
+    :param points2: (N, 3) array of target points (same N as weights)
+    :param weights: (N,) array of non-negative weights
+    :return: 4x4 homogeneous transformation matrix T
+    """
+    assert points1.shape == points2.shape, "points1 and points2 must have the same shape"
+    N, dim = points1.shape
+    assert weights.shape[0] == N, "weights length must match number of points"
+    
+    # Normalize weights and compute total
+    w = weights.astype(np.float64)
+    W_sum = np.sum(w)
+    assert W_sum > 0, "Sum of weights must be positive"
+    
+    # Compute weighted centroids
+    centroid1 = np.sum(points1 * w[:, None], axis=0) / W_sum
+    centroid2 = np.sum(points2 * w[:, None], axis=0) / W_sum
+    
+    # Center and weight the point clouds
+    sqrt_w = np.sqrt(w)
+    A = (points1 - centroid1) * sqrt_w[:, None]  # shape (N,3)
+    B = (points2 - centroid2) * sqrt_w[:, None]  # shape (N,3)
+    
+    # Perform SVD on the weighted, centered point clouds (3xN matrices)
+    # transpose to shape (3, N)
+    U1, _, _ = np.linalg.svd(A.T, full_matrices=False)
+    U2, _, _ = np.linalg.svd(B.T, full_matrices=False)
+    
+    # Compute rotation
+    R = U2 @ U1.T
+    
+    # Handle possible reflection
+    if np.linalg.det(R) < 0:
+        # Flip third column of U2
+        U2[:, 2] *= -1
+        R = U2 @ U1.T
+    
+    # Compute translation
+    t = centroid2 - R @ centroid1
+    
+    # Assemble homogeneous transform
+    T = np.eye(4, dtype=np.float64)
+    T[:3, :3] = R
+    T[:3, 3] = t
+    
+    return T
+
+
+def get_extrinsic_from_two_3dbox_object(box_object_1, box_object_2, double_check=False):
     points1 = box_object_1.get_bbox3d_8_3()
     points2 = box_object_2.get_bbox3d_8_3()
-    return get_extrinsic_from_two_points(points1, points2)
+    T = get_extrinsic_from_two_points(points1, points2)
+    if double_check:
+        flip_indices = [2, 3, 0, 1, 6, 7, 4, 5]
+        points1_flipped = points1[flip_indices]
+        T2 = get_extrinsic_from_two_points(points1_flipped, points2)
+        if np.linalg.norm(implement_T_points_n_3(T2, points1_flipped) - points2) < np.linalg.norm(implement_T_points_n_3(T, points1) - points2):
+            T = T2
+    return T
+
+def get_extrinsic_from_two_3dbox_object_svd_without_match(box_object_1, box_object_2):
+    points1 = box_object_1.get_bbox3d_8_3()
+    points2 = box_object_2.get_bbox3d_8_3()
+    return get_extrinsic_from_two_points_svd_without_match(points1, points2)
+
     
 def get_extrinsic_from_two_mixed_3dbox_object_list(box_object_list_1, box_object_list_2, weights=None):
     if len(box_object_list_1) == 0 or len(box_object_list_2) == 0:
@@ -203,6 +319,17 @@ def get_extrinsic_from_two_mixed_3dbox_object_list(box_object_list_1, box_object
     # print('weights', weights)
     return get_extrinsic_from_two_points_weighted(points1, points2,  np.repeat(np.array(weights), 8))
     
+def get_extrinsic_from_two_mixed_3dbox_object_list_svd_without_match(box_object_list_1, box_object_list_2, weights=None):
+    if len(box_object_list_1) == 0 or len(box_object_list_2) == 0:
+        return np.eye(4)
+    points1 = np.concatenate([box_object.get_bbox3d_8_3() for box_object in box_object_list_1], axis=0)
+    points2 = np.concatenate([box_object.get_bbox3d_8_3() for box_object in box_object_list_2], axis=0)
+    if weights is None:
+        weights = np.ones(points1.shape[0] // 8)
+    # print('weights', weights)
+    return get_extrinsic_from_two_points_weighted_svd_without_match(points1, points2,  np.repeat(np.array(weights), 8))
+
+
 # HPCR-VI (2023IV)
 def get_RE_TE_by_compare_T_6DOF_result_true(T1_6DOF, T2_6DOF):
     # RE : °

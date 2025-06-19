@@ -170,4 +170,25 @@ cython_debug/
 # data/
 result/
 
+selected_pairs_olddatarange.json
+analysis_result.csv
+
 ```
+analysis_results.csv
+data/DAIR-V2X/cooperative-vehicle-infrastructure
+data/DAIR-V2X/cooperative/test_data_info.json
+data/DAIR-V2X/detected/dairv2x-second_uncertainty.zip
+data/DAIR-V2X/detected/detected_boxes_test.json
+data/DAIR-V2X/detected/detected_boxes_train.json
+data/DAIR-V2X/detected/detected_boxes_val.json
+data/DAIR-V2X/detected/given_boxes_val.json
+data/DAIR-V2X/detected/dairv2x-second_uncertainty/test/stage1_boxes.json
+data/DAIR-V2X/detected/dairv2x-second_uncertainty/train/stage1_boxes.json
+data/DAIR-V2X/detected/dairv2x-second_uncertainty/val/stage1_boxes.json
+data/DAIR-V2X/infrastructure-side/label/virtuallidar/001366.json
+data/V2XSim2/pointpillar_train_inference_boxes.json
+data/V2XSim2/second_test_split_boxes.json
+Log/selected_pairs_co_greater_1.json
+Log/selected_pairs_co_greater_2.json
+data/DAIR-V2X/infrastructure-side/label/virtuallidar/001366.json
+data/DAIR-V2X/infrastructure-side/label/virtuallidar/001366.json

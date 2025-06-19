@@ -3,8 +3,122 @@ import matplotlib.pyplot as plt
 import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
-from utils import cal_3dIoU, get_lwh_from_bbox3d_8_3, get_bbox3d_8_3_from_xyz_lwh, get_vector_between_bbox3d_8_3, get_length_between_bbox3d_8_3, get_time_judge, implement_T_3dbox_object_list, get_extrinsic_from_two_3dbox_object, convert_T_to_6DOF
+from utils import cal_3dIoU, get_lwh_from_bbox3d_8_3, get_bbox3d_8_3_from_xyz_lwh, get_vector_between_bbox3d_8_3, get_length_between_bbox3d_8_3, get_time_judge, implement_T_3dbox_object_list, get_extrinsic_from_two_3dbox_object, get_extrinsic_from_two_3dbox_object_svd_without_match, convert_T_to_6DOF
 from CorrespondingDetector import CorrespondingDetector
+import multiprocessing as mp
+from itertools import product
+import functools # For functools.partial
+import atexit # To ensure pool cleanup on exit
+
+_PERSISTENT_PROCESS_POOL = None
+
+def get_persistent_pool(num_processes=None):
+    """
+    Creates and returns a global persistent multiprocessing pool.
+    Initializes it only once.
+    """
+    global _PERSISTENT_PROCESS_POOL
+    if _PERSISTENT_PROCESS_POOL is None:
+        actual_num_processes = num_processes or mp.cpu_count()
+        print(f"Initializing persistent global pool with {actual_num_processes} processes.")
+        _PERSISTENT_PROCESS_POOL = mp.Pool(processes=actual_num_processes)
+    return _PERSISTENT_PROCESS_POOL
+
+def cleanup_persistent_pool():
+    """Closes and joins the global pool if it exists."""
+    global _PERSISTENT_PROCESS_POOL
+    if _PERSISTENT_PROCESS_POOL:
+        print("Cleaning up persistent global pool.")
+        _PERSISTENT_PROCESS_POOL.close()
+        _PERSISTENT_PROCESS_POOL.join()
+        _PERSISTENT_PROCESS_POOL = None
+
+# Register the cleanup function to be called at program exit
+atexit.register(cleanup_persistent_pool)
+
+# --- Refactored Task Processing Function ---
+# process_task no longer relies on global variables for task-specific data.
+# All necessary data is passed as arguments.
+def process_task_refactored(ij_pair, infra_list_arg, vehicle_list_arg, 
+                            category_flag_arg, core_sim_arg, distance_thresh_arg, parallel):
+    """
+    Processes a single (i, j) pair.
+    All data is passed via arguments, not globals from an initializer.
+    """
+    i, j = ij_pair
+    infra_obj = infra_list_arg[i]
+    vehicle_obj = vehicle_list_arg[j]
+    
+    if category_flag_arg and infra_obj.get_bbox_type() != vehicle_obj.get_bbox_type():
+        return (i, j, 0.0, -1)
+    
+    # These functions would be your actual implementations
+    # Ensure they are defined or imported in the scope where workers can access them.
+    # For example:
+    # from .utils import get_extrinsic_from_two_3dbox_object, implement_T_3dbox_object_list
+    # from .detectors import CorrespondingDetector
+
+    T = get_extrinsic_from_two_3dbox_object(infra_obj, vehicle_obj)
+    converted_infra = implement_T_3dbox_object_list(T, infra_list_arg) # Pass infra_list_arg
+    
+    detector = CorrespondingDetector(
+        converted_infra, vehicle_list_arg, # Pass vehicle_list_arg
+        core_similarity_component=core_sim_arg,
+        distance_threshold=distance_thresh_arg,
+        parallel=parallel
+    )
+    score = int(detector.get_Yscore())
+    matched_num = detector.get_matched_num()
+    return (i, j, score, matched_num)
+
+
+# --- Main Parallel Calculation Function (Refactored) ---
+def cal_core_KP_distance_parallel_refactored(
+    infra_object_list, vehicle_object_list,
+    category_flag=True, core_similarity_component='centerpoint_distance',
+    distance_threshold=3, num_processes=None, parallel=False
+):
+    """
+    Calculates KP distance using a persistent global multiprocessing pool.
+    """
+    task_indices = [] # List of (i, j) index pairs
+    for i, infra_obj in enumerate(infra_object_list):
+        for j, vehicle_obj in enumerate(vehicle_object_list):
+            if category_flag and infra_obj.get_bbox_type() != vehicle_obj.get_bbox_type():
+                continue
+            task_indices.append((i, j))
+    
+    if not task_indices: # No tasks to process after filtering
+        return np.zeros((len(infra_object_list), len(vehicle_object_list)), dtype=np.float64), -1
+
+    # Get the persistent global pool
+    pool = get_persistent_pool(num_processes=num_processes)
+    
+    # Use functools.partial to create a new function with some arguments pre-filled.
+    # These pre-filled arguments (infra_object_list, vehicle_object_list, etc.)
+    # will be pickled and sent to the worker processes along with the tasks.
+    task_processor_with_data = functools.partial(
+        process_task_refactored,
+        infra_list_arg=infra_object_list,
+        vehicle_list_arg=vehicle_object_list,
+        category_flag_arg=category_flag,
+        core_sim_arg=core_similarity_component,
+        distance_thresh_arg=distance_threshold, 
+        parallel=parallel
+    )
+    
+    # pool.map will now call task_processor_with_data(ij_pair) for each ij_pair in task_indices
+    results = pool.map(task_processor_with_data, task_indices)
+    
+    KP = np.zeros((len(infra_object_list), len(vehicle_object_list)), dtype=np.float64)
+    max_matches_num = -1
+    if results: # Check if results is not empty
+        for i_res, j_res, score_res, matched_num_res in results:
+            KP[i_res, j_res] = score_res
+            if matched_num_res > max_matches_num:
+                max_matches_num = matched_num_res
+                
+    return KP, max_matches_num
 
 
 def normalized_KP(KP):
@@ -38,7 +152,7 @@ def cal_core_KP_IoU(infra_object_list, vehicle_object_list, category_flag = True
     return KP, max_matches_num
 
 
-def cal_core_KP_distance(infra_object_list, vehicle_object_list, category_flag = True, core_similarity_component = 'centerpoint_distance', distance_threshold = 3):
+def cal_core_KP_distance(infra_object_list, vehicle_object_list, category_flag = True, core_similarity_component = 'centerpoint_distance', distance_threshold = 3, svd_starategy = 'svd_with_match', parallel = False):
     max_matches_num = -1
     KP = np.zeros((len(infra_object_list), len(vehicle_object_list)), dtype=np.float64)
     for i, infra_bbox_object in enumerate(infra_object_list):
@@ -46,14 +160,99 @@ def cal_core_KP_distance(infra_object_list, vehicle_object_list, category_flag =
             if category_flag:
                 if infra_bbox_object.get_bbox_type() != vehicle_bbox_object.get_bbox_type():
                     continue
-            T = get_extrinsic_from_two_3dbox_object(infra_bbox_object, vehicle_bbox_object)
+            if svd_starategy == 'svd_with_match':
+                T = get_extrinsic_from_two_3dbox_object(infra_bbox_object, vehicle_bbox_object)
+            elif svd_starategy == 'svd_without_match':
+                T = get_extrinsic_from_two_3dbox_object_svd_without_match(infra_bbox_object, vehicle_bbox_object)
+            else:
+                raise ValueError('svd_starategy should be svd_with_match or svd_without_match')
             converted_infra_boxes_object_list = implement_T_3dbox_object_list(T, infra_object_list)
-            corresponding_detector = CorrespondingDetector(converted_infra_boxes_object_list, vehicle_object_list, core_similarity_component=core_similarity_component, distance_threshold=distance_threshold)
+            corresponding_detector = CorrespondingDetector(converted_infra_boxes_object_list, vehicle_object_list, core_similarity_component=core_similarity_component, distance_threshold=distance_threshold, parallel=parallel)
             KP[i, j] = int(corresponding_detector.get_Yscore() )#* infra_bbox_object.get_confidence() * vehicle_bbox_object.get_confidence() * 2
             if max_matches_num < corresponding_detector.get_matched_num():
                 max_matches_num = corresponding_detector.get_matched_num()
     return KP, max_matches_num
     # return KP, normalized_KP(KP), max_matches_num
+
+
+def process_task(args):
+    """并行处理单个(i,j)对的函数"""
+    i, j = args
+    # 从全局变量获取数据
+    infra_obj = global_infra_list[i]
+    vehicle_obj = global_vehicle_list[j]
+    
+    # 类别检查（尽管任务已预过滤，保留以防万一）
+    if global_category_flag and infra_obj.get_bbox_type() != vehicle_obj.get_bbox_type():
+        return (i, j, 0.0, -1)
+    
+    # 计算变换矩阵并转换基础设施检测框
+    T = get_extrinsic_from_two_3dbox_object(infra_obj, vehicle_obj)
+    converted_infra = implement_T_3dbox_object_list(T, global_infra_list)
+    
+    # 计算匹配得分和匹配数
+    detector = CorrespondingDetector(
+        converted_infra, global_vehicle_list,
+        core_similarity_component=global_core_sim,
+        distance_threshold=global_distance_thresh,
+        parallel=global_parallel_flag
+    )
+    score = int(detector.get_Yscore())
+    matched_num = detector.get_matched_num()
+    return (i, j, score, matched_num)
+
+def init_pool(infra_list, vehicle_list, category_flag, core_sim, distance_thresh, parallel_flag):
+    """初始化子进程的全局变量"""
+    global global_infra_list, global_vehicle_list, global_category_flag
+    global global_core_sim, global_distance_thresh, global_parallel_flag
+    global_infra_list = infra_list
+    global_vehicle_list = vehicle_list
+    global_category_flag = category_flag
+    global_core_sim = core_sim
+    global_distance_thresh = distance_thresh
+    global_parallel_flag = parallel_flag
+
+def cal_core_KP_distance_parallel(
+    infra_object_list, vehicle_object_list,
+    category_flag=True, core_similarity_component='centerpoint_distance',
+    distance_threshold=3, num_processes=None, parallel=False
+):
+    # 生成所有可能的(i,j)对，并预过滤
+    tasks = []
+    for i, j in product(range(len(infra_object_list)), range(len(vehicle_object_list))):
+        infra_obj = infra_object_list[i]
+        vehicle_obj = vehicle_object_list[j]
+        if category_flag and infra_obj.get_bbox_type() != vehicle_obj.get_bbox_type():
+            continue
+        tasks.append((i, j))
+    
+    # 配置进程池
+    num_processes = num_processes or mp.cpu_count()
+    init_args = (
+        infra_object_list, vehicle_object_list,
+        category_flag, core_similarity_component, distance_threshold, parallel
+    )
+    
+    # 并行处理任务
+    with mp.Pool(
+        processes=num_processes,
+        initializer=init_pool,
+        initargs=init_args
+    ) as pool:
+        results = pool.map(process_task, tasks)
+    
+    # 合并结果
+    KP = np.zeros((len(infra_object_list), len(vehicle_object_list)), dtype=np.float64)
+    max_matches_num = -1
+    for i, j, score, matched_num in results:
+        KP[i, j] = score
+        if matched_num > max_matches_num:
+            max_matches_num = matched_num
+    return KP, max_matches_num
+
+
+
+
 
 def cal_other_edge_KP(infra_object_list, vehicle_object_list, category_flag = True, similarity_strategy = 'length'):
     KP = np.zeros((len(infra_object_list), len(vehicle_object_list)), dtype=np.float64)

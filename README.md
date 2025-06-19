@@ -5,8 +5,38 @@
 </h3>
 
 <div align="center">
-    <img src="./static/images/V2I-CALIB++_workflow.png" alt="V2I-CALIB++_Workflow" width="88%">
+    <img src="./static/images/V2I-CALIB++_workflow_v2.png" alt="V2I-CALIB++_Workflow" width="88%">
   </div>
+
+<div style="display: flex; flex-wrap: wrap; gap: 20px; margin-top: 20px;">
+  <div style="flex: 1; min-width: 300px;">
+    <h3>Calibration Quality Comparison</h3>
+    <video controls width="100%" poster="thumbnail_merged.jpg">
+      <source src="visuals/merged_output.mp4" type="video/mp4">
+      Your browser does not support the video tag. See `visuals/merged_output.mp4`.
+    </video>
+    <p style="margin-top: 10px; font-size: 0.95rem;">
+      This visualization compares the bounding boxes (obtained via PointPillars on DAIR-V2X) 
+      after registration using extrinsic parameters from V2I-Calib++ (left) versus the 
+      official DAIR dataset parameters (right). The point cloud overlay demonstrates the 
+      improved alignment accuracy achieved by our method.
+    </p>
+  </div>
+
+  <!-- <div style="flex: 1; min-width: 300px;">
+    <h3>Latency Scenario Performance</h3>
+    <video controls width="100%" poster="thumbnail_delay.jpg">
+      <source src="visuals/delay_scene.mp4" type="video/mp4">
+      Your browser does not support the video tag. See `visuals/delay_scene.mp4`.
+    </video>
+    <p style="margin-top: 10px; font-size: 0.95rem;">
+      Detection results under varying latency conditions, using PointPillars weights from 
+      the DAIR authors and extrinsic parameters from V2I-Calib++. The visualization 
+      highlights our method's robustness in asynchronous real-world scenarios.
+    </p>
+  </div> -->
+</div>
+
 
 ## Highlight
 
@@ -18,6 +48,7 @@
 ## News
 * [2024/09/13] V2I-CALIB++ is available <a href="https://arxiv.org/abs/2410.11008">here</a>.
 * [2024/06/30] V2I-CALIB is accepted by IROS 2024!
+
 
 ## Experimental Comparison
 
@@ -80,63 +111,384 @@ We conducted experiments comparing V2I-Calib and V2I-Calib++ against well-perfor
     </table>
     </div>
     <h6>* Note: @λ indicates the threshold for success rate</h6>
+
 * <a href="https://github.com/AIR-THU/DAIR-V2X">DAIR-V2X</a> (Asynchronous Heterogeneous LiDARs)
     <div align="left">
     <table>
-        <tr align="center">
-            <td rowspan="2">Method</td>
-            <td rowspan="2">RRE(°)</td>
-            <td rowspan="2">RTE(m)</td>
-            <td colspan="2" align="center">Success Rate(%)</td>
-            <td rowspan="2">Time (s)</td>
-        </tr>
-        <tr align="center">
-            <td>@1</td>
-            <td>@2</td>
-        </tr>
-        <tr align="center">
-            <td><a href="https://github.com/isl-org/FastGlobalRegistration">FGR</a> </td>
-            <td>1.71</td>
-            <td>1.61</td>
-            <td>22.11</td>
-            <td>62.81</td>
-            <td>25.50</td>
-        </tr>
-        <tr align="center">
-            <td><a href="https://github.com/url-kaist/Quatro">Quatro</a></td>
-            <td>1.46</td>
-            <td>1.49</td>
-            <td>19.90</td>
-            <td>69.90</td>
-            <td>24.52</td>
-        </tr>
-        <tr align="center">
-            <td><a href="https://github.com/MIT-SPARK/TEASER-plusplus">Teaser++</a></td>
-            <td>1.83</td>
-            <td>1.67</td>
-            <td>20.30</td>
-            <td>58.91</td>
-            <td>24.33</td>
-        </tr>
-        <tr align="center">
-            <td>V2I-Calib(Ours)</td>
-            <td>1.25</td>
-            <td>1.32</td>
-            <td>42.81</td>
-            <td>76.04</td>
-            <td>0.34</td>
-        </tr>
-        <tr align="center">
-            <td><strong>V2I-Calib++(Ours)</strong></td>
-            <td><strong>1.23</strong></td>
-            <td><strong>1.16</strong></td>
-            <td><strong>51.40</strong></td>
-            <td><strong>84.58</strong></td>
-            <td><strong>0.12</strong></td>
-        </tr>
+      <tr align="center">
+        <th rowspan="2">Init</th>
+        <th rowspan="2">Noise<br>(m & °)</th>
+        <th rowspan="2">Method</th>
+        <th colspan="3">mRRE (°) ↓</th>
+        <th colspan="3">mRTE (m) ↓</th>
+        <th colspan="3">SuccessRate (%) ↑</th>
+        <th rowspan="2">Time (s) ↓</th>
+      </tr>
+      <tr align="center">
+        <th>@1°</th>
+        <th>@2°</th>
+        <th>@3°</th>
+        <th>@1m</th>
+        <th>@2m</th>
+        <th>@3m</th>
+        <th>@1m</th>
+        <th>@2m</th>
+        <th>@3m</th>
+      </tr>
+      <tr align="center">
+        <td rowspan="12">✓</td>
+        <td>0</td>
+        <td><a href="https://www.open3d.org/docs/release/tutorial/pipelines/icp_registration.html">ICP</a></td>
+        <td>0.65</td>
+        <td>0.98</td>
+        <td>1.07</td>
+        <td><strong>0.42</strong></td>
+        <td><strong>0.54</strong></td>
+        <td><strong>0.58</strong></td>
+        <td>47.52</td>
+        <td>89.55</td>
+        <td>96.01</td>
+        <td>2.91</td>
+      </tr>
+      <tr align="center">
+        <td>1</td>
+        <td><a href="https://www.open3d.org/docs/release/tutorial/pipelines/icp_registration.html">ICP</a></td>
+        <td>0.80</td>
+        <td>1.36</td>
+        <td>1.72</td>
+        <td>0.66</td>
+        <td>1.31</td>
+        <td>1.62</td>
+        <td>0.86</td>
+        <td>37.93</td>
+        <td>80.50</td>
+        <td>2.92</td>
+      </tr>
+      <tr align="center">
+        <td>2</td>
+        <td><a href="https://www.open3d.org/docs/release/tutorial/pipelines/icp_registration.html">ICP</a></td>
+        <td>0.00</td>
+        <td>1.48</td>
+        <td>2.11</td>
+        <td>0.00</td>
+        <td>1.33</td>
+        <td>2.03</td>
+        <td>0.00</td>
+        <td>3.66</td>
+        <td>19.94</td>
+        <td>2.86</td>
+      </tr>
+      <tr align="center">
+        <td>0</td>
+        <td><a href="">PICP</a></td>
+        <td><strong>0.52</strong></td>
+        <td><strong>0.80</strong></td>
+        <td><strong>0.88</strong></td>
+        <td><strong>0.42</strong></td>
+        <td><strong>0.54</strong></td>
+        <td><u>0.57</u></td>
+        <td><strong>59.59</strong></td>
+        <td><strong>90.41</strong></td>
+        <td><u>96.12</u></td>
+        <td>1.35</td>
+      </tr>
+      <tr align="center">
+        <td>1</td>
+        <td><a href="https://www.sciencedirect.com/science/article/pii/S0921889015302712">PICP</a></td>
+        <td>0.74</td>
+        <td>1.31</td>
+        <td>1.67</td>
+        <td>0.75</td>
+        <td>1.32</td>
+        <td>1.63</td>
+        <td>2.91</td>
+        <td>42.78</td>
+        <td>87.93</td>
+        <td>1.76</td>
+      </tr>
+      <tr align="center">
+        <td>2</td>
+        <td><a href="https://www.sciencedirect.com/science/article/pii/S0921889015302712">PICP</a></td>
+        <td>0.80</td>
+        <td>1.40</td>
+        <td>2.11</td>
+        <td>0.53</td>
+        <td>1.45</td>
+        <td>2.10</td>
+        <td>0.22</td>
+        <td>2.69</td>
+        <td>21.12</td>
+        <td>1.70</td>
+      </tr>
+      <tr align="center">
+        <td>0</td>
+        <td><a href="https://dl.acm.org/doi/abs/10.1145/3495243.3560539">VIPS</a></td>
+        <td>0.63</td>
+        <td><u>0.89</u></td>
+        <td><u>0.99</u></td>
+        <td>0.54</td>
+        <td>0.78</td>
+        <td>0.89</td>
+        <td><u>54.20</u></td>
+        <td><u>88.69</u></td>
+        <td><strong>97.63</strong></td>
+        <td>0.46</td>
+      </tr>
+      <tr align="center">
+        <td>1</td>
+        <td><a href="https://dl.acm.org/doi/abs/10.1145/3495243.3560539">VIPS</a></td>
+        <td>0.66</td>
+        <td>1.04</td>
+        <td>1.24</td>
+        <td>0.54</td>
+        <td>0.82</td>
+        <td>1.02</td>
+        <td>18.53</td>
+        <td>39.01</td>
+        <td>47.74</td>
+        <td><u>0.44</u></td>
+      </tr>
+      <tr align="center">
+        <td>2</td>
+        <td><a href="https://dl.acm.org/doi/abs/10.1145/3495243.3560539">VIPS</a></td>
+        <td><u>0.58</u></td>
+        <td>1.17</td>
+        <td>1.56</td>
+        <td><u>0.48</u></td>
+        <td>0.96</td>
+        <td>1.39</td>
+        <td>2.37</td>
+        <td>7.87</td>
+        <td>13.15</td>
+        <td>0.47</td>
+      </tr>
+      <tr align="center">
+        <td>0</td>
+        <td><a href="https://ieeexplore.ieee.org/abstract/document/10461035">CBM †</a></td>
+        <td>0.61</td>
+        <td>0.97</td>
+        <td>1.21</td>
+        <td>0.53</td>
+        <td>0.80</td>
+        <td>1.06</td>
+        <td>17.11</td>
+        <td>23.04</td>
+        <td>26.49</td>
+        <td><strong>0.35</strong></td>
+      </tr>
+      <tr align="center">
+        <td>1</td>
+        <td><a href="https://ieeexplore.ieee.org/abstract/document/10461035">CBM †</a></td>
+        <td>0.71</td>
+        <td>0.94</td>
+        <td>1.14</td>
+        <td>0.61</td>
+        <td><u>0.74</u></td>
+        <td>1.00</td>
+        <td>9.91</td>
+        <td>15.63</td>
+        <td>16.49</td>
+        <td>0.36</td>
+      </tr>
+      <tr align="center">
+        <td>2</td>
+        <td><a href="https://ieeexplore.ieee.org/abstract/document/10461035">CBM †</a></td>
+        <td>0.69</td>
+        <td>1.09</td>
+        <td>1.38</td>
+        <td>0.58</td>
+        <td>0.76</td>
+        <td>1.06</td>
+        <td>6.03</td>
+        <td>12.28</td>
+        <td>16.81</td>
+        <td><strong>0.35</strong></td>
+      </tr>
+      <tr align="center">
+        <td>✕</td>
+        <td>-</td>
+        <td><a href="https://github.com/isl-org/FastGlobalRegistration">FGR</a></td>
+        <td>0.71</td>
+        <td>1.15</td>
+        <td>1.47</td>
+        <td>0.70</td>
+        <td>1.13</td>
+        <td>1.45</td>
+        <td>14.76</td>
+        <td>31.57</td>
+        <td>35.34</td>
+        <td>22.73</td>
+      </tr>
+      <tr align="center">
+        <td>✕</td>
+        <td>-</td>
+        <td><a href="https://github.com/url-kaist/Quatro">Quatro</a></td>
+        <td><strong>0.62</strong></td>
+        <td>1.22</td>
+        <td>1.46</td>
+        <td>0.65</td>
+        <td>1.19</td>
+        <td>1.51</td>
+        <td>12.07</td>
+        <td>30.50</td>
+        <td>45.04</td>
+        <td>21.58</td>
+      </tr>
+      <tr align="center">
+        <td>✕</td>
+        <td>-</td>
+        <td><a href="https://github.com/MIT-SPARK/TEASER-plusplus">Teaser++</a></td>
+        <td>0.69</td>
+        <td>1.13</td>
+        <td>1.47</td>
+        <td>0.66</td>
+        <td>1.09</td>
+        <td>1.44</td>
+        <td>14.33</td>
+        <td>29.74</td>
+        <td>34.81</td>
+        <td><u>22.43</u></td>
+      </tr>
+      <tr align="center">
+        <td>✕</td>
+        <td>-</td>
+        <td>V2I-Calib</td>
+        <td>0.66</td>
+        <td><u>1.03</u></td>
+        <td><u>1.25</u></td>
+        <td>0.54</td>
+        <td>0.91</td>
+        <td>1.18</td>
+        <td>25.54</td>
+        <td>55.93</td>
+        <td>72.31</td>
+        <td>0.21</td>
+      </tr>
+      <tr align="center">
+        <td>✕</td>
+        <td>-</td>
+        <td>V2I-Calib++<sub>GT</sub><sup>∞</sup></td>
+        <td><strong>0.62</strong></td>
+        <td><strong>1.01</strong></td>
+        <td>1.26</td>
+        <td><strong>0.49</strong></td>
+        <td><strong>0.83</strong></td>
+        <td>1.07</td>
+        <td>22.88</td>
+        <td>48.03</td>
+        <td>61.49</td>
+        <td>0.46</td>
+      </tr>
+      <tr align="center">
+        <td>✕</td>
+        <td>-</td>
+        <td>V2I-Calib++<sub>GT</sub><sup>25</sup></td>
+        <td><u>0.63</u></td>
+        <td><strong>1.01</strong></td>
+        <td><strong>1.23</strong></td>
+        <td><u>0.52</u></td>
+        <td><u>0.85</u></td>
+        <td><strong>1.05</strong></td>
+        <td><strong>32.27</strong></td>
+        <td><strong>67.59</strong></td>
+        <td><strong>82.93</strong></td>
+        <td>0.12</td>
+      </tr>
+      <tr align="center">
+        <td>✕</td>
+        <td>-</td>
+        <td>V2I-Calib++<sub>GT</sub><sup>15</sup></td>
+        <td>0.65</td>
+        <td>1.05</td>
+        <td>1.30</td>
+        <td>0.54</td>
+        <td>0.87</td>
+        <td>1.10</td>
+        <td><u>26.79</u></td>
+        <td><u>61.17</u></td>
+        <td><u>78.75</u></td>
+        <td><u>0.09</u></td>
+      </tr>
+      <tr align="center">
+        <td>✕</td>
+        <td>-</td>
+        <td>V2I-Calib++<sub>GT</sub><sup>10</sup></td>
+        <td>0.66</td>
+        <td>1.11</td>
+        <td>1.36</td>
+        <td>0.57</td>
+        <td>0.92</td>
+        <td>1.15</td>
+        <td>20.02</td>
+        <td>54.86</td>
+        <td>71.98</td>
+        <td><strong>0.04</strong></td>
+      </tr>
+      <tr align="center">
+        <td>✕</td>
+        <td>-</td>
+        <td>V2I-Calib++<sub>PP</sub><sup>15</sup></td>
+        <td>0.66</td>
+        <td>1.06</td>
+        <td>1.29</td>
+        <td>0.55</td>
+        <td>0.86</td>
+        <td>1.07</td>
+        <td>24.91</td>
+        <td>56.62</td>
+        <td>70.94</td>
+        <td>-</td>
+      </tr>
+      <tr align="center">
+        <td>✕</td>
+        <td>-</td>
+        <td>V2I-Calib++<sub>SC</sub><sup>15</sup></td>
+        <td>0.65</td>
+        <td>1.05</td>
+        <td>1.29</td>
+        <td>0.54</td>
+        <td>0.86</td>
+        <td><u>1.06</u></td>
+        <td>25.15</td>
+        <td>56.89</td>
+        <td>71.23</td>
+        <td>-</td>
+      </tr>
+      <tr align="center">
+        <td>✕</td>
+        <td>-</td>
+        <td>V2I-Calib++<sub>GT</sub><sup>25</sup>(hSVD)‡</td>
+        <td>0.71</td>
+        <td>1.13</td>
+        <td>1.35</td>
+        <td>0.62</td>
+        <td>0.98</td>
+        <td>1.25</td>
+        <td>21.82</td>
+        <td>60.43</td>
+        <td>74.92</td>
+        <td>0.12</td>
+      </tr>
+      <tr align="center">
+        <td>✕</td>
+        <td>-</td>
+        <td>V2I-Calib++<sub>GT</sub><sup>25</sup>(mSVD)‡</td>
+        <td>0.67</td>
+        <td>1.08</td>
+        <td>1.31</td>
+        <td>0.56</td>
+        <td>0.94</td>
+        <td>1.19</td>
+        <td>25.22</td>
+        <td>63.58</td>
+        <td>80.22</td>
+        <td>0.12</td>
+      </tr>
     </table>
     </div>
-    <h6>* Note: @λ indicates the threshold for success rate</h6>
+    <h6>* Note: Comparative Results on the DAIR-V2X Dataset. For the methods that require initial pose values, we add noise of equal magnitude to the rotational and translational dimensions to simulate different levels and sources of noise in real-world scenarios. Lower values are better for <em>mRRE</em> and <em>mRTE</em> ( $\downarrow$), and higher values are better for $SuccessRate$ ($\uparrow$). Subscripts GT, PP, and SC denote ground-truth boxes, PointPillars detector boxes, and SECOND detector boxes, respectively. The superscript k signifies the use of top-k dimension-sorted boxes, while ∞ indicates use all boxes provided. The <strong>best</strong> and <u>second-best</u> results are highlighted in each section.</h6>
+    <h6>†: For CBM , our reimplementation (`benchmark/initial_value_method_test.py:255`) achieves comparable accuracy but significantly lower success rates under $ SuccessRate@\lambda $. </h6>
+    <h6>‡: V2I-Calib++ entries without parentheses (e.g., V2I-Calib++<sub>GT</sub><sup>25</sup>) use the proposed Weighted SVD (wSVD) by default. Comparisons between wSVD, mSVD, and hSVD strategies (Section 4.4) validate wSVD's superior robustness.</h6>
 
 
 ## Getting Started

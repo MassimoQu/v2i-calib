@@ -42,7 +42,8 @@ class VehicleReader(Reader):
         '''
         location of detection result of https://github.com/AIR-THU/DAIR-V2X ->  DAIR-V2X/cache/vic-late-lidar/veh/lidar 
         '''
-        return osp.join('/home/massimo/DAIR-V2X-calibration/cache/vic-late-lidar/veh/lidar', self.vehicle_file_name + '.json')
+        # return osp.join('/home/massimo/DAIR-V2X-calibration/cache/vic-late-lidar/veh/lidar', self.vehicle_file_name + '.json')
+        return osp.join(self.data_folder, 'vehicle-side', 'label', 'lidar', self.vehicle_file_name + '.json')
 
     # def get_vehicle_image(self):
     #     return cv2.imread(self.parse_vehicle_image_path())

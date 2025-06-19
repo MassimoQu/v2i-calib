@@ -7,4 +7,4 @@ from .CooperativeReader import CooperativeReader
 from .InfraReader import InfraReader
 from .VehicleReader import VehicleReader
 from .Reader import Reader
-from .V2XSim_Reader import V2XSim_Reader
+from .V2XSim_Reader import V2XSim_Reader, V2XSim_detected_Reader

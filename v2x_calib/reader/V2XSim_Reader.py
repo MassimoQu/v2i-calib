@@ -8,10 +8,14 @@ import numpy as np
 import signal
 import sys
 from pathlib import Path
+sys.path.append(str(Path(__file__).parent.parent.parent))
 sys.path.append(str(Path(__file__).parent.parent))
-from utils import implement_T_3dbox_object_list, convert_T_to_6DOF, convert_6DOF_to_T, implement_T_3dbox_n_8_3, implement_T_to_3dbox_with_own_center
-from BBox3d import BBox3d
+from v2x_calib.utils import implement_T_3dbox_object_list, convert_T_to_6DOF, convert_6DOF_to_T, implement_T_3dbox_n_8_3, implement_T_to_3dbox_with_own_center
+from v2x_calib.reader.BBox3d import BBox3d
 import noise_utils
+import json
+from scipy.spatial.transform import Rotation as R
+from visualize import BBoxVisualizer_open3d
 # from visualize import BBoxVisualizer_open3d_standardized
 
 
@@ -334,8 +338,192 @@ class V2XSim_Reader:
             yield frame_idx, cav_ids[0], bbox3d_object_list_world, noised_bbox3d_object_list_world
 
 
-if __name__ == "__main__":
-    reader = V2XSim_Reader() 
-    # reader.generate_vehicle_vehicle_bboxes_object_list()
-    reader.generate_gt_and_noised_bboxes_object_list()
+# Utility function (can be outside the class or a static method)
+def pose_to_matrix(pose_vec):
+    """
+    Converts a pose vector [x, y, z, roll, pitch, yaw] (angles in degrees)
+    to a 4x4 SE(3) transformation matrix.
+    """
+    translation = np.array(pose_vec[:3])
+    # Assuming roll, pitch, yaw are in degrees.
+    # Standard sequence for many systems is 'xyz' extrinsic or 'ZYX' intrinsic.
+    # If your system uses a different order, adjust 'xyz'.
+    rotation_obj = R.from_euler('xyz', pose_vec[3:6], degrees=True)
+    rotation_matrix = rotation_obj.as_matrix()
+    
+    matrix = np.eye(4)
+    matrix[:3, :3] = rotation_matrix
+    matrix[:3, 3] = translation
+    return matrix
 
+
+
+
+class V2XSim_detected_Reader:
+    def __init__(self, json_file_path="/mnt/ssd_gw/v2i-calib/data/DAIR-V2X/detected/given_boxes_val.json", json_data_str=None):
+        if json_file_path:
+            with open(json_file_path, 'r') as f:
+                self.dataset_json = json.load(f)
+        elif json_data_str:
+            self.dataset_json = json.loads(json_data_str)
+        else:
+            raise ValueError("Either json_file_path or json_data_str must be provided.")
+
+    def get_3dbbox_object_list(self, bboxes_corners_list_raw):
+        """
+        Converts a list of raw bounding box corners (list of lists of lists)
+        into a list of BBox3d objects.
+        Args:
+            bboxes_corners_list_raw (list): A list where each element is an 8x3 list/array of corners.
+        Returns:
+            list: A list of BBox3d objects.
+        """
+        bbox3d_object_list = []
+        for corners_raw in bboxes_corners_list_raw:
+            # The BBox3d constructor expects bbox_type and bbox_8_3 (corners)
+            # We'll use 'car' as a default type and pass other BBox defaults.
+            bbox3d_object_list.append(BBox3d(bbox_type='car', bbox_8_3=np.array(corners_raw)))
+        return bbox3d_object_list
+
+    def get_noised_3dbbox_object_list(self, T_transform_target_from_base, base_bbox_object_list, 
+                                      noise_type, noise_params):
+        """
+        Transforms a list of BBox3d objects from a base frame to a target frame,
+        and then applies noise to the corners of these transformed objects.
+        Args:
+            T_transform_target_from_base (np.ndarray): 4x4 matrix to transform objects from base frame to target frame.
+            base_bbox_object_list (list): List of BBox3d objects in the base frame.
+            noise_type (str): Type of noise (e.g., 'gaussian').
+            noise_params (dict): Parameters for noise generation (e.g., 'pos_std', 'pos_mean').
+        Returns:
+            list: List of new BBox3d objects in the target frame, with noise applied.
+        """
+        # Step 1: Transform objects to the target CAV's frame using the global function
+        # This function returns a NEW list of NEW BBox3d objects with transformed corners.
+        transformed_bboxes_list = implement_T_3dbox_object_list(T_transform_target_from_base, base_bbox_object_list)
+
+        if noise_type != 'gaussian' or noise_params is None: # Or no noise_type
+            return transformed_bboxes_list
+
+        # Step 2: Apply noise to the corners of the already transformed BBox3d objects
+        noised_final_bboxes_list = []
+        pos_std = noise_params.get('pos_std', 0.0)
+        pos_mean = noise_params.get('pos_mean', 0.0)
+        # Note: Applying rotational noise directly to corners is complex. 
+        # True rotational noise would typically be applied to the object's orientation parameters
+        # before corners are derived. Here, we only apply positional noise to corners.
+
+        for bbox_obj in transformed_bboxes_list: # bbox_obj is already a transformed copy
+            noisy_corners = bbox_obj.get_bbox3d_8_3() + np.random.normal(
+                pos_mean, 
+                pos_std, 
+                bbox_obj.get_bbox3d_8_3().shape
+            )
+            # Create a new BBox3d object with the noised corners, preserving other attributes
+            # by using the copy method of the transformed bbox_obj and then updating corners.
+            noised_bbox = bbox_obj.copy() # Preserves type, 2d_bbox, confidence etc.
+            noised_bbox.bbox3d_8_3 = noisy_corners 
+            noised_final_bboxes_list.append(noised_bbox)
+        
+        return noised_final_bboxes_list
+
+    def generate_vehicle_vehicle_bboxes_object_list(self, 
+                                                    noise_type=None, 
+                                                    noise={'pos_std':0.2, 'rot_std':0.2, 'pos_mean':0, 'rot_mean':0}):
+        """
+        Generates pairs of bounding box lists for pairs of CAVs from the loaded JSON data.
+        The first CAV in each frame's list is used as the reference (CAV1). Its detected objects
+        (in its own LiDAR frame) are considered the "base scene". These base objects are then
+        transformed (and potentially noised) into the view of other CAVs (CAV2, CAV3, etc.)
+        to form pairs (CAV1_objects, CAV2_objects_transformed_from_CAV1).
+        """
+        for frame_idx_str in self.dataset_json.keys():
+            frame_data = self.dataset_json[frame_idx_str]
+            cav_id_str_list = frame_data['cav_id_list']
+            
+            if len(cav_id_str_list) < 1: # Need at least one CAV to be the reference
+                continue
+
+            # --- Reference CAV (CAV1) Setup ---
+            ref_cav_list_idx = 0 # Index of the reference CAV in the frame's lists
+            
+            # Pose of the reference CAV (CAV1) in the world
+            T_world_ref_lidar = pose_to_matrix(frame_data['lidar_pose_clean_np'][ref_cav_list_idx])
+            
+            # Base objects are detections from the reference CAV, in its own LiDAR frame.
+            base_objects_corners_in_ref_frame = frame_data['pred_corner3d_np_list'][ref_cav_list_idx]
+            base_bbox3d_list_in_ref_frame = self.get_3dbbox_object_list(base_objects_corners_in_ref_frame)
+
+            # Objects for CAV1 (the reference CAV).
+            # T_cav1_from_ref is Identity because CAV1 is the reference.
+            T_cav1_from_ref = np.eye(4)
+            if noise_type is None:
+                # Create copies even if no noise, to ensure distinct lists per yield
+                bbox3d_object_list_lidar1 = implement_T_3dbox_object_list(T_cav1_from_ref, base_bbox3d_list_in_ref_frame)
+            else:
+                bbox3d_object_list_lidar1 = self.get_noised_3dbbox_object_list(
+                    T_cav1_from_ref, 
+                    base_bbox3d_list_in_ref_frame, 
+                    noise_type, 
+                    noise
+                )
+
+            # --- Pair with other CAVs (CAV2) ---
+            # The outer loop in user's example code (with `if cav_id1 == 1: break`)
+            # effectively means CAV1 is always the first CAV (index 0 here).
+            for cav2_list_idx in range(ref_cav_list_idx + 1, len(cav_id_str_list)):
+                T_world_lidar2 = pose_to_matrix(frame_data['lidar_pose_clean_np'][cav2_list_idx])
+
+                # Transformation matrix to bring objects from ref_lidar_frame to lidar2_frame:
+                # X_lidar2 = T_lidar2_world @ X_world
+                # X_world = T_world_ref_lidar @ X_ref_lidar
+                # So, X_lidar2 = (T_lidar2_world @ T_world_ref_lidar) @ X_ref_lidar
+                # T_lidar2_world = inv(T_world_lidar2)
+                T_cav2_from_ref = np.linalg.inv(T_world_lidar2) @ T_world_ref_lidar
+                
+                if noise_type is None:
+                     bbox3d_object_list_lidar2 = implement_T_3dbox_object_list(
+                         T_cav2_from_ref, 
+                         base_bbox3d_list_in_ref_frame
+                     )
+                else:
+                    bbox3d_object_list_lidar2 = self.get_noised_3dbbox_object_list(
+                        T_cav2_from_ref,
+                        base_bbox3d_list_in_ref_frame,
+                        noise_type,
+                        noise
+                    )
+                
+                # Relative pose of lidar2_frame w.r.t lidar1_frame (CAV1 is ref_lidar)
+                # T_lidar2_in_lidar1_frame = inv(T_world_lidar1) @ T_world_lidar2
+                # Since T_world_lidar1 is T_world_ref_lidar:
+                T_lidar2_in_lidar1_frame = np.linalg.inv(T_world_lidar2) @  T_world_ref_lidar
+                
+                current_frame_int_idx = int(frame_idx_str)
+                cav_id_str_cav2 = cav_id_str_list[cav2_list_idx]
+
+                yield current_frame_int_idx, cav_id_str_cav2, \
+                      bbox3d_object_list_lidar1, bbox3d_object_list_lidar2, \
+                      T_lidar2_in_lidar1_frame
+
+
+if __name__ == "__main__":
+    # reader = V2XSim_Reader() 
+    # # reader.generate_vehicle_vehicle_bboxes_object_list()
+    # reader.generate_gt_and_noised_bboxes_object_list()
+    cnt = 0
+    for id1, id2, infra_boxes_object_list, vehicle_boxes_object_list, T_true in V2XSim_detected_Reader().generate_vehicle_vehicle_bboxes_object_list():
+        if cnt ==1:
+            print(f"id1: {id1}, id2: {id2}, infra_boxes_object_list: {len(infra_boxes_object_list)}, vehicle_boxes_object_list: {len(vehicle_boxes_object_list)}, T_true: {T_true}")
+            T_true_converted_infra_boxes_object_list = implement_T_3dbox_object_list(T_true, infra_boxes_object_list)
+            # BBoxVisualizer_open3d().plot_boxes3d_lists_pointcloud_lists([T_true_converted_infra_boxes_object_list, vehicle_boxes_object_list], [], [(1, 0, 0), (0, 1, 0)], 'true T')
+            BBoxVisualizer_open3d().plot_boxes3d_lists_pointcloud_lists([infra_boxes_object_list, vehicle_boxes_object_list], [], [(1, 0, 0), (0, 1, 0)], 'true T')
+            break
+        else:
+            cnt += 1
+            continue
+        # print(f"id1: {id1}, id2: {id2}, infra_boxes_object_list: {len(infra_boxes_object_list)}, vehicle_boxes_object_list: {len(vehicle_boxes_object_list)}, T_true: {T_true}")
+        # T_true_converted_infra_boxes_object_list = implement_T_3dbox_object_list(T_true, infra_boxes_object_list)
+        # BBoxVisualizer_open3d().plot_boxes3d_lists_pointcloud_lists([T_true_converted_infra_boxes_object_list, vehicle_boxes_object_list], [], [(1, 0, 0), (0, 1, 0)], 'true T')
+        # BBoxVisualizer_open3d().plot_boxes3d_lists_pointcloud_lists([infra_boxes_object_list, vehicle_boxes_object_list], [], [(1, 0, 0), (0, 1, 0)], 'true T')
+        

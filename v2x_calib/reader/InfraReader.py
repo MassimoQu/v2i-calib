@@ -36,7 +36,8 @@ class InfraReader(Reader):
         '''
         location of detection result of https://github.com/AIR-THU/DAIR-V2X ->  DAIR-V2X/cache/vic-late-lidar/inf/lidar
         '''
-        return osp.join('/home/massimo/DAIR-V2X-calibration/cache/vic-late-lidar/inf/lidar', self.infra_file_name + '.json')
+        # return osp.join('/home/massimo/DAIR-V2X-calibration/cache/vic-late-lidar/inf/lidar', self.infra_file_name + '.json')
+        return osp.join(self.data_folder, 'infrastructure-side', 'label', 'virtuallidar', self.infra_file_name + '.json')
 
     # def get_infra_image(self):
     #     return cv2.imread(self.parse_infra_image_path())

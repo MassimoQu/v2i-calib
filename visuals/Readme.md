@@ -1,5 +1,28 @@
-## visualization results
-### merged_output.mp4
-This shows part of the visualized bounding boxes obtained using PointPillar on the DAIR dataset, after registration using extrinsic parameters from V2I-Calib and those provided by the dataset authors, respectively. In the video, we visualize the point clouds. The left side shows the results after registration using extrinsic parameters predicted by our method in V2I-Calib++, while the right side shows the results using the extrinsic parameters provided by the DAIR dataset authors.
-### delay_scene.mp4
-Here we show the visualization results of detection boxes obtained using the authors' PointPillars weights on the DAIR dataset under different latency scenarios, following registration with external parameters obtained through the V2I-Calib++ calibration method.
+## Visualization Results
+
+<div style="display: flex; flex-wrap: wrap; gap: 20px; margin-top: 20px;">
+  <div style="flex: 1; min-width: 300px;">
+    <h3>Calibration Quality Comparison</h3>
+    <video controls width="100%" poster="thumbnail_merged.jpg">
+      <source src="merged_output.mp4" type="video/mp4">
+      Your browser does not support the video tag.
+    </video>
+    <p style="margin-top: 10px; font-size: 0.95rem;">
+      This visualization compares the bounding boxes (obtained via PointPillars on DAIR-V2X) 
+      after registration using extrinsic parameters from V2I-Calib++ (left) versus the 
+      official DAIR dataset parameters (right). The point cloud overlay demonstrates the 
+      improved alignment accuracy achieved by our method.
+    </p>
+  </div>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 20px; margin-top: 20px;">
+  <div style="flex: 1; min-width: 300px;">
+    <h3>Latency Scenario Performance</h3>
+    <video controls width="100%" poster="thumbnail_delay.jpg">
+      <source src="delay_scene.mp4" type="video/mp4">
+      Your browser does not support the video tag.
+    </video>
+    <p style="margin-top: 10px; font-size: 0.95rem;">
+      Extrinsic parameters results from V2I-Calib++ using PointPillars detection boxes under varying latency conditions. We observed an interesting phenomenon: instead of a cliff-like performance decline with increasing latency, the results exhibited complementary trade-offs across different frames. Analysis suggests that at low latency, occlusion-induced detection box invisibility in certain frame pairs adversely affected registration quality. As latency increased, temporal shifting alleviated local occlusion patterns, improving detection in these frames. Concurrently, our method's inherent tolerance to temporal asynchrony enhanced performance in previously suboptimal low-latency scenarios. The visualization highlights our method's robustness in asynchronous real-world conditions.
+  </div>
+</div>
