@@ -8,7 +8,7 @@
     <img src="./static/images/V2I-CALIB++_workflow_v2.png" alt="V2I-CALIB++_Workflow" width="88%">
   </div>
 
-<div style="display: flex; flex-wrap: wrap; gap: 20px; margin-top: 20px;">
+<!-- <div style="display: flex; flex-wrap: wrap; gap: 20px; margin-top: 20px;">
   <div style="flex: 1; min-width: 300px;">
     <h3>Calibration Quality Comparison</h3>
     <video controls width="100%" poster="thumbnail_merged.jpg">
@@ -16,27 +16,18 @@
       Your browser does not support the video tag. See `visuals/merged_output.mp4`.
     </video>
     <p style="margin-top: 10px; font-size: 0.95rem;">
-      This visualization compares the bounding boxes (obtained via PointPillars on DAIR-V2X) 
+      This visualization (`visuals/merged_output.mp4`) compares the bounding boxes (obtained via PointPillars on DAIR-V2X) 
       after registration using extrinsic parameters from V2I-Calib++ (left) versus the 
       official DAIR dataset parameters (right). The point cloud overlay demonstrates the 
       improved alignment accuracy achieved by our method.
     </p>
   </div>
 
-  <!-- <div style="flex: 1; min-width: 300px;">
-    <h3>Latency Scenario Performance</h3>
-    <video controls width="100%" poster="thumbnail_delay.jpg">
-      <source src="visuals/delay_scene.mp4" type="video/mp4">
-      Your browser does not support the video tag. See `visuals/delay_scene.mp4`.
-    </video>
-    <p style="margin-top: 10px; font-size: 0.95rem;">
-      Detection results under varying latency conditions, using PointPillars weights from 
-      the DAIR authors and extrinsic parameters from V2I-Calib++. The visualization 
-      highlights our method's robustness in asynchronous real-world scenarios.
-    </p>
-  </div> -->
-</div>
+</div> -->
 
+[![Calibration Quality Comparison Video](visuals/thumbnail_merged.png)](https://github.com/MassimoQu/v2i-calib/blob/main/visuals/merged_output.mp4)
+
+This visualization (`visuals/merged_output.mp4`) compares the bounding boxes (obtained via PointPillars on DAIR-V2X) after registration using extrinsic parameters from V2I-Calib++ (left) versus the official DAIR dataset parameters (right). The point cloud overlay demonstrates the improved alignment accuracy achieved by our method.
 
 ## Highlight
 
