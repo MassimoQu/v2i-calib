@@ -37,8 +37,9 @@ This visualization (`visuals/merged_output.mp4`) compares the bounding boxes (ob
 
 
 ## News
+* [2025/07/18] V2I-CALIB++ has been accpeted by IEEE Transactions on Intelligent Transportation Systems!
 * [2024/09/13] V2I-CALIB++ is available <a href="https://arxiv.org/abs/2410.11008">here</a>.
-* [2024/06/30] V2I-CALIB is accepted by IROS 2024!
+* [2024/06/30] V2I-CALIB has been accpeted by IROS 2024!
 
 
 ## Experimental Comparison
