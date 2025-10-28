@@ -1,7 +1,9 @@
 # V2I-CALIB and V2I-CALIB++: Object-Level, Real-Time Point Cloud Global Registration Framework for V2I/V2X Applications
 
 <h3 align="center">
-  <a href="https://arxiv.org/abs/2407.10195">V2X-Calib Paper</a> | <a href="https://arxiv.org/abs/2410.11008">V2X-Calib++ Paper</a> 
+  <!-- <a href="https://arxiv.org/abs/2407.10195">V2X-Calib Paper</a> | <a href="https://arxiv.org/abs/2410.11008">V2X-Calib++ Paper</a>  -->
+  <a href="https://ieeexplore.ieee.org/abstract/document/10802098"><img src="https://img.shields.io/badge/IROS25-Paper-blue?logo=paper"/> </a>  <a href="https://arxiv.org/abs/2410.11008"><img src="https://img.shields.io/badge/TITS-arXiv_2410.11008-b31b1b?logo=arxiv" alt="arXiv" /></a>  <a href="https://mp.weixin.qq.com/s?search_click_id=2428615448500534455-1727774148445-8298043828&__biz=MzkyMDY0OTc1NA==&mid=2247504642&idx=1&sn=5e8e8f523c59fc69bf997fa4d99b8897&chksm=c0cebdfa1d2adf1bb12c4a4806f62e77c9e81423bee9d0726d95003f5c9f57a08b1b22944373&scene=7&subscene=10000&sessionid=1727767087&clicktime=1727774148&enterid=1727774148&ascene=65&fasttmpl_type=0&fasttmpl_fullversion=7404782-en_US-zip&fasttmpl_flag=0&realreporttime=1727774148463&devicetype=android-34&version=28003337&nettype=3gnet&abtest_cookie=AAACAA%3D%3D&lang=en&countrycode=IT&exportkey=n_ChQIAhIQOf1YI7b%2BnFnQn0bb%2Fz%2B%2B4xLfAQIE97dBBAEAAAAAAK6AKbESUMEAAAAOpnltbLcz9gKNyK89dVj0PhCrrft%2BplkV1nNAvevodERZfCUl1%2Fb4M2DDiZD%2FbFVoZegjV4q%2FDtLGSxD356hm284NbUCDDnGQLomN2VVb7NDh9nFtDUxc1HK49ZQ8Hu8Tt25eKvwfVm2Wo%2BD1OCMS%2FexqYgoqy7MI%2Bn9cGyonbnsPt5sBU9cTjqu0L5GwQ1XE9nVqSDWJXBOrEAPh2oxNMo0%2FPD8JlPaXFIl5fO%2F6m45NUNx05YrM6xkf0LuFo0f%2BY9rwabhb3Dw%3D&pass_ticket=d19o4MvXBDDn6peTtEFxPIxAp6v3oFFS%2FUdTdsUkXZPfGJXKz%2FFaO%2FmHzyq%2FcRAy&wx_header=3"><img src="https://img.shields.io/badge/Chinese_Blog-09B83E?logo=wechat&logoColor=white&label="> </a>
+
 </h3>
 
 <div align="center">
@@ -35,12 +37,11 @@ This visualization (`visuals/merged_output.mp4`) compares the bounding boxes (ob
 * A new multi-end target association method is proposed, which fully explores spatial associations in the scene without positioning priors;
 * oIoU and oDist both enable real-time monitoring of external parameters in the scene.
 
-
 ## News
-* [2025/07/18] V2I-CALIB++ has been accpeted by IEEE Transactions on Intelligent Transportation Systems!
-* [2024/09/13] V2I-CALIB++ is available <a href="https://arxiv.org/abs/2410.11008">here</a>.
-* [2024/06/30] V2I-CALIB has been accpeted by IROS 2024!
 
+* [2025/08/18] V2I-CALIB++ has been accpeted by IEEE Transactions on Intelligent Transportation Systems!
+* [2024/09/13] V2I-CALIB++ was available <a href="https://arxiv.org/abs/2410.11008">here</a>.
+* [2024/06/30] V2I-CALIB was accepted by IROS 2024 as oral, see you in Abu Dhabi!
 
 ## Experimental Comparison
 
@@ -571,11 +572,13 @@ This project is not possible without the following codebases.
 
 If you find our work or this repo useful, please cite:
 ```
-@article{qu2024v2i,
-  title={V2I-Calib: A Novel Calibration Approach for Collaborative Vehicle and Infrastructure LiDAR Systems},
-  author={Qu, Qianxin and Xiong, Yijin and Wu, Xin and Li, Hanyu and Guo, Shichun},
-  journal={arXiv preprint arXiv:2407.10195},
-  year={2024}
+@inproceedings{qu2024v2i,
+  title={V2I-Calib: A novel calibration approach for collaborative vehicle and infrastructure lidar systems},
+  author={Qu, Qianxin and Xiong, Yijin and Zhang, Guipeng and Wu, Xin and Gao, Xiaohan and Gao, Xin and Li, Hanyu and Guo, Shichun and Zhang, Guoying},
+  booktitle={2024 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)},
+  pages={892--897},
+  year={2024},
+  organization={IEEE}
 }
 ```
 ```
