@@ -1,12 +1,12 @@
 data: 
   # type: DAIR-V2X #_detected # V2X-Sim
-  type: V2X-Sim_detected 
+  type: DAIR-V2X 
 
   # if the dataset is DAIR-V2X
   data_root_path: ./data/DAIR-V2X/cooperative-vehicle-infrastructure
   # data_root_path: /media/admin123/82b1c917-b440-495b-b677-1e8f51331722/mamba/old-dair/cooperative-vehicle-infrastructure/cooperative-vehicle-infrastructure/
   
-  data_info_path: ./data/DAIR-V2X/cooperative-vehicle-infrastructure/cooperative/data_info.json
+  data_info_path: ./data/DAIR-V2X/cooperative-vehicle-infrastructure/cooperative/selected_data_info.json
   # data_info_path: /media/admin123/82b1c917-b440-495b-b677-1e8f51331722/mamba/old-dair/cooperative-vehicle-infrastructure/cooperative-vehicle-infrastructure/cooperative/data_info.json
 
   # if the dataset is V2X-Sim
@@ -17,7 +17,7 @@ data:
     rot_mean: 0
 
 v2x_calib:
-  filter_num: 100
+  filter_num: 10
   distance_threshold: 
     truck: 1.5
     van: 1.5
@@ -52,6 +52,6 @@ v2x_calib:
   # svd_without_match  svd_with_match
   svd_strategy: svd_with_match
 
-  parallel_flag: true
+  parallel_flag: false
   correspoding_parallel_flag: false
   

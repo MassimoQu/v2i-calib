@@ -268,14 +268,14 @@ if __name__ == '__main__':
     if args.correspoding_parallel_flag != -1:
         cfg.v2x_calib.correspoding_parallel_flag = args.correspoding_parallel_flag
 
-    # if args.test_type == 'single':
-    #     test_solo_with_dataset(cfg, args.inf_id, args.veh_id, time_veerbose = False)
-    # elif args.test_type == 'batch':
-    #     batching_test_extrisic_from_two_box_object_list(cfg = cfg)
-    # else:
-    #     print('Invalid test_type, please choose single or batch')
+    if args.test_type == 'single':
+        test_solo_with_dataset(cfg, args.inf_id, args.veh_id, time_veerbose = False)
+    elif args.test_type == 'batch':
+        batching_test_extrisic_from_two_box_object_list(cfg = cfg)
+    else:
+        print('Invalid test_type, please choose single or batch')
 
-    extract_flipped_scenerios(cfg)
+    # extract_flipped_scenerios(cfg)
 
 
     # for i in range(1, 10):

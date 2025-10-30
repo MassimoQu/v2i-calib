@@ -1,4 +1,4 @@
-# V2I-CALIB and V2I-CALIB++: Object-Level, Real-Time Point Cloud Global Registration Framework for V2I/V2X Applications
+# V2I-CALIB / V2X-REG++: Object-Level, Online Point Cloud Global Registration Framework for V2I/V2X Applications
 
 <h3 align="center">
   <!-- <a href="https://arxiv.org/abs/2407.10195">V2X-Calib Paper</a> | <a href="https://arxiv.org/abs/2410.11008">V2X-Calib++ Paper</a>  -->
