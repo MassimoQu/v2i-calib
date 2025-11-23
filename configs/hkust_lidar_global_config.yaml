@@ -1,0 +1,76 @@
+data: 
+  type: DAIR-V2X
+
+  # if the dataset is DAIR-V2X
+  data_root_path: ./data/DAIR-V2X/cooperative-vehicle-infrastructure
+  data_info_path: ./data/DAIR-V2X/cooperative/selected_data_info.json
+
+
+evaluation:
+  rot_thd: 5 # the error between the estimated pose and GT shouldn't exceed 5 degrees
+  trans_thd: 2 # the error between the estimated pose and GT shouldn't exceed 2 meters
+
+infra:
+  fpfh:
+    voxel_size: 0.6 # meter
+    radius_normal: 1.2 # meter, for normal estimation
+    radius_feature: 3.0 # meter, for feature estimation
+  beam_alignment:
+    enabled: true
+    source_lines: 300
+    target_lines: 40
+    min_points: 6000
+    random_seed: 3407
+    match_vehicle_angle: true
+    angle_percentiles: [2.0, 98.0]
+    min_points_after_angle: 4000
+
+vehicle:
+  fpfh:
+    voxel_size: 0.5 # meter
+    radius_normal: 1.0 # meter, for normal estimation
+    radius_feature: 2.5 # meter, for feature estimation
+
+post_refine:
+  icp:
+    enabled: true
+    max_correspondence_distance: 1.5
+    max_iterations: 60
+    method: point_to_plane
+
+registration_modes:
+  - name: coarse
+    infra_fpfh:
+      voxel_size: 1.0
+      radius_normal: 2.0
+      radius_feature: 5.0
+    vehicle_fpfh:
+      voxel_size: 0.6
+      radius_normal: 1.2
+      radius_feature: 3.0
+  - name: dense
+    infra_fpfh:
+      voxel_size: 0.6
+      radius_normal: 1.2
+      radius_feature: 3.0
+    vehicle_fpfh:
+      voxel_size: 0.5
+      radius_normal: 1.0
+      radius_feature: 2.5
+  - name: ultra_dense
+    infra_fpfh:
+      voxel_size: 0.4
+      radius_normal: 0.8
+      radius_feature: 2.0
+    vehicle_fpfh:
+      voxel_size: 0.4
+      radius_normal: 0.8
+      radius_feature: 2.0
+
+# "FGR" or "QUATRO"
+rotation_estimation_algorithm: "GNC_TLS"
+# rotation_estimation_algorithm: "FGR"
+# rotation_estimation_algorithm: "QUATRO"
+
+teaser:
+  noise_bound: 1.0 # meter

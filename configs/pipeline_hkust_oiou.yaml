@@ -1,0 +1,46 @@
+data:
+  dataset: DAIR-V2X
+  split: selected
+  data_info_path: data/DAIR-V2X/cooperative/selected_data_info.json
+  data_root: data/DAIR-V2X/cooperative-vehicle-infrastructure
+  detection_cache: null
+  use_detection: false
+  noise:
+    pos_std: 0
+    rot_std: 0
+  max_samples: 30
+filters:
+  top_k: 10
+  distance_m: 120
+  priority_categories: [bus, truck, car]
+matching:
+  strategy: ['category', 'core']
+  core_components: ['iou']
+  filter_strategy: thresholdRetained
+  filter_threshold: 4
+  matches2extrinsic: weightedSVD
+  svd_strategy: svd_with_match
+  distance_thresholds:
+    truck: 0.01
+    van: 0.01
+    bus: 0.01
+    car: 0.01
+    trafficcone: 0.01
+    pedestrian: 0.01
+    cyclist: 0.01
+    motorcyclist: 0.01
+    tricylist: 0.01
+    barrawlist: 0.01
+    detected: 0.01
+  prior_weight: 0.0
+  parallel_flag: false
+  corresponding_parallel: false
+solver:
+  stability_gate: 0
+  max_iterations: 1
+evaluation:
+  success_thresholds: [1.0, 2.0, 3.0, 4.0, 5.0]
+  time_verbose: false
+output:
+  root_dir: outputs
+  tag: v2i_calib_oiou

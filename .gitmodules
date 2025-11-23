@@ -1,0 +1,21 @@
+[submodule "LiDAR-Registration-Benchmark"]
+	path = benchmarks/third_party/LiDAR-Registration-Benchmark
+	url = https://github.com/HKUST-Aerial-Robotics/LiDAR-Registration-Benchmark.git
+[submodule "benchmarks/third_party/CBM"]
+	path = benchmarks/third_party/CBM
+	url = https://github.com/zhyingS/CBM.git
+[submodule "benchmarks/third_party/eigen"]
+	path = benchmarks/third_party/eigen
+	url = https://gitlab.com/libeigen/eigen.git
+[submodule "benchmarks/third_party/TEASER-plusplus"]
+	path = benchmarks/third_party/TEASER-plusplus
+	url = https://github.com/MIT-SPARK/TEASER-plusplus.git
+[submodule "HEAL"]
+	path = HEAL
+	url = https://github.com/yifanlu0227/HEAL.git
+[submodule "benchmarks/third_party/VIPS_co_visible_object_matching"]
+	path = benchmarks/third_party/VIPS_co_visible_object_matching
+	url = https://github.com/255doesnotexist/VIPS_co_visible_object_matching.git
+[submodule "benchmarks/third_party/LiDAR-Registration-Benchmark"]
+	path = benchmarks/third_party/LiDAR-Registration-Benchmark
+	url = https://github.com/HKUST-Aerial-Robotics/LiDAR-Registration-Benchmark.git

@@ -14,12 +14,12 @@
   <div style="flex: 1; min-width: 300px;">
     <h3>Calibration Quality Comparison</h3>
     <video controls width="100%" poster="thumbnail_merged.jpg">
-      <source src="visuals/merged_output.mp4" type="video/mp4">
-      Your browser does not support the video tag. See `visuals/merged_output.mp4`.
+      <source src="static/visuals/merged_output.mp4" type="video/mp4">
+      Your browser does not support the video tag. See `static/visuals/merged_output.mp4`.
     </video>
     <p style="margin-top: 10px; font-size: 0.95rem;">
-      This visualization (`visuals/merged_output.mp4`) compares the bounding boxes (obtained via PointPillars on DAIR-V2X) 
-      after registration using extrinsic parameters from V2I-Calib++ (left) versus the 
+      This visualization (`static/visuals/merged_output.mp4`) compares the bounding boxes (obtained via PointPillars on DAIR-V2X) 
+      after registration using extrinsic parameters from V2X-Reg++ (left) versus the 
       official DAIR dataset parameters (right). The point cloud overlay demonstrates the 
       improved alignment accuracy achieved by our method.
     </p>
@@ -27,15 +27,26 @@
 
 </div> -->
 
-[![Calibration Quality Comparison Video](visuals/thumbnail_merged.png)](https://github.com/MassimoQu/v2i-calib/blob/main/visuals/merged_output.mp4)
+[![Calibration Quality Comparison Video](static/visuals/thumbnail_merged.png)](https://github.com/MassimoQu/v2i-calib/blob/main/static/visuals/merged_output.mp4)
 
-This visualization (`visuals/merged_output.mp4`) compares the bounding boxes (obtained via PointPillars on DAIR-V2X) after registration using extrinsic parameters from V2I-Calib++ (left) versus the official DAIR dataset parameters (right). The point cloud overlay demonstrates the improved alignment accuracy achieved by our method.
+This visualization (`static/visuals/merged_output.mp4`) compares the bounding boxes (obtained via PointPillars on DAIR-V2X) after registration using extrinsic parameters from V2X-Reg++ (left) versus the official DAIR dataset parameters (right). The point cloud overlay demonstrates the improved alignment accuracy achieved by our method.
 
 ## Highlight
 
 * An initial-value-free online calibration method for vehicle-road multi-end scenarios is proposed, based on perception objects;
 * A new multi-end target association method is proposed, which fully explores spatial associations in the scene without positioning priors;
-* oIoU and oDist both enable real-time monitoring of external parameters in the scene.
+* We distinguish two variants in this repo: **V2I-Calib** (oIoU-based association, original IROS2024 method) and **V2X-Reg++** (distance-based association, previously referred to as V2I-Calib++ in earlier drafts); both oDist remain available for real-time extrinsic monitoring.
+
+## Project Status & Roadmap
+
+The public tree currently focuses on the refactored **object-level (detection-box) calibration stack**. We are actively rebuilding the repository so it can plug into modern cooperative-perception frameworks (e.g., HEAL) and expose feature-level / learning-based registration utilities. The following items are on our near-term roadmap:
+
+- [ ] Integrate the solver with mainstream collaborative perception pipelines to consume intermediate BEV features, not just final detection boxes.
+- [ ] Introduce temporal reasoning (sliding-window correspondences + motion-aware filtering) to improve stability in low-overlap scenes.
+- [ ] Learn richer correspondence cues by leveraging non-box features (occupancy peaks, keypoints, descriptors) exported from deep models.
+- [ ] Generalize the current “post-fusion” formulation into a mid-fusion friendly variant trained end-to-end for camera/LiDAR combinations.
+
+These features are under active development and will be released once the interfaces stabilize. Contributions or early feedback are welcome via issues/PRs.
 
 ## News
 
@@ -43,9 +54,35 @@ This visualization (`visuals/merged_output.mp4`) compares the bounding boxes (ob
 * [2024/09/13] V2I-CALIB++ was available <a href="https://arxiv.org/abs/2410.11008">here</a>.
 * [2024/06/30] V2I-CALIB was accepted by IROS 2024 as oral, see you in Abu Dhabi!
 
+## Repository Layout
+
+- `calib/` & `configs/`: refactored object-level pipeline (data → filtering → matching → solver).
+- `benchmarks/`: HKUST LiDAR demo plus `run_dair_lidar_benchmark.py` and `third_party/LiDAR-Registration-Benchmark/`.
+- `legacy/`: archived scripts/data from the previous CLI (`config.yaml`, historical CSV/JSON, `setup.sh`, etc.).
+- `v2x_calib/`: legacy implementation still reused by the new pipeline/benchmarks (kept until full migration).
+- `outputs/`: run artifacts (`metrics.json`, `matches.jsonl`, `logs/`).
+
+## Reproducing Current Experiments
+
+The configs used in the paper are bundled under `configs/`. Each experiment can be launched via `python tools/run_calibration.py --config <CONFIG> [--print]`. Typical demos include:
+
+- **DAIR-V2X LiDAR (GT boxes, single-pair calibration).**  
+  `python tools/run_calibration.py --config configs/pipeline.yaml --print`  
+  Requires DAIR-V2X metadata plus ground-truth boxes packaged by `tools/dair_to_calib_cache.py`.
+
+- **DAIR-V2X LiDAR (HEAL detections, no priors).**  
+  `python tools/run_calibration.py --config configs/pipeline_detection.yaml --print`  
+  Uses detection caches from HEAL stage-1; see `docs/operations/experiment_reproduction.md` for download links.
+
+- **HKUST multi-agent LiDAR benchmark.**  
+  `python tools/run_calibration.py --config configs/pipeline_hkust.yaml --print`  
+  Demonstrates the batched evaluation used in `docs/operations/hkust_vs_v2icalib_report.md`.
+
+Other configs (e.g., `pipeline_detection_subset.yaml`, `pipeline_hkust_temporal.yaml`, `pipeline_descriptor.yaml`) are WIP variants that explore different data splits or matching strategies—the scripts are functional but the surrounding documentation/tests are still being finalized as part of the ongoing refactor described above.
+
 ## Experimental Comparison
 
-We conducted experiments comparing V2I-Calib and V2I-Calib++ against well-performed point cloud Global Registration methods, using two widely recognized V2X datasets: DAIR-V2X and V2X-Sim. The results are as follows.
+We conducted experiments comparing V2I-Calib and V2X-Reg++ against well-performed point cloud Global Registration methods, using two widely recognized V2X datasets: DAIR-V2X and V2X-Sim. The results are as follows.
 
 * <a href="https://github.com/ai4ce/V2X-Sim">V2X-Sim</a> (Synchronous Homologous LiDARs)
     <div align="left">
@@ -94,7 +131,7 @@ We conducted experiments comparing V2I-Calib and V2I-Calib++ against well-perfor
             <td>0.37</td>
         </tr>
         <tr align="center">
-            <td><strong>V2I-Calib++(Ours)</strong></td>
+            <td><strong>V2X-Reg++(Ours)</strong></td>
             <td><strong>0.01</strong></td>
             <td><strong>0.01</strong></td>
             <td><strong>96.80</strong></td>
@@ -360,7 +397,7 @@ We conducted experiments comparing V2I-Calib and V2I-Calib++ against well-perfor
       <tr align="center">
         <td>✕</td>
         <td>-</td>
-        <td>V2I-Calib++<sub>GT</sub><sup>∞</sup></td>
+        <td>V2X-Reg++<sub>GT</sub><sup>∞</sup></td>
         <td><strong>0.62</strong></td>
         <td><strong>1.01</strong></td>
         <td>1.26</td>
@@ -375,7 +412,7 @@ We conducted experiments comparing V2I-Calib and V2I-Calib++ against well-perfor
       <tr align="center">
         <td>✕</td>
         <td>-</td>
-        <td>V2I-Calib++<sub>GT</sub><sup>25</sup></td>
+        <td>V2X-Reg++<sub>GT</sub><sup>25</sup></td>
         <td><u>0.63</u></td>
         <td><strong>1.01</strong></td>
         <td><strong>1.23</strong></td>
@@ -390,7 +427,7 @@ We conducted experiments comparing V2I-Calib and V2I-Calib++ against well-perfor
       <tr align="center">
         <td>✕</td>
         <td>-</td>
-        <td>V2I-Calib++<sub>GT</sub><sup>15</sup></td>
+        <td>V2X-Reg++<sub>GT</sub><sup>15</sup></td>
         <td>0.65</td>
         <td>1.05</td>
         <td>1.30</td>
@@ -405,7 +442,7 @@ We conducted experiments comparing V2I-Calib and V2I-Calib++ against well-perfor
       <tr align="center">
         <td>✕</td>
         <td>-</td>
-        <td>V2I-Calib++<sub>GT</sub><sup>10</sup></td>
+        <td>V2X-Reg++<sub>GT</sub><sup>10</sup></td>
         <td>0.66</td>
         <td>1.11</td>
         <td>1.36</td>
@@ -420,7 +457,7 @@ We conducted experiments comparing V2I-Calib and V2I-Calib++ against well-perfor
       <tr align="center">
         <td>✕</td>
         <td>-</td>
-        <td>V2I-Calib++<sub>PP</sub><sup>15</sup></td>
+        <td>V2X-Reg++<sub>PP</sub><sup>15</sup></td>
         <td>0.66</td>
         <td>1.06</td>
         <td>1.29</td>
@@ -435,7 +472,7 @@ We conducted experiments comparing V2I-Calib and V2I-Calib++ against well-perfor
       <tr align="center">
         <td>✕</td>
         <td>-</td>
-        <td>V2I-Calib++<sub>SC</sub><sup>15</sup></td>
+        <td>V2X-Reg++<sub>SC</sub><sup>15</sup></td>
         <td>0.65</td>
         <td>1.05</td>
         <td>1.29</td>
@@ -450,7 +487,7 @@ We conducted experiments comparing V2I-Calib and V2I-Calib++ against well-perfor
       <tr align="center">
         <td>✕</td>
         <td>-</td>
-        <td>V2I-Calib++<sub>GT</sub><sup>25</sup>(hSVD)‡</td>
+        <td>V2X-Reg++<sub>GT</sub><sup>25</sup>(hSVD)‡</td>
         <td>0.71</td>
         <td>1.13</td>
         <td>1.35</td>
@@ -465,7 +502,7 @@ We conducted experiments comparing V2I-Calib and V2I-Calib++ against well-perfor
       <tr align="center">
         <td>✕</td>
         <td>-</td>
-        <td>V2I-Calib++<sub>GT</sub><sup>25</sup>(mSVD)‡</td>
+        <td>V2X-Reg++<sub>GT</sub><sup>25</sup>(mSVD)‡</td>
         <td>0.67</td>
         <td>1.08</td>
         <td>1.31</td>
@@ -480,8 +517,8 @@ We conducted experiments comparing V2I-Calib and V2I-Calib++ against well-perfor
     </table>
     </div>
     <h6>* Note: Comparative Results on the DAIR-V2X Dataset. For the methods that require initial pose values, we add noise of equal magnitude to the rotational and translational dimensions to simulate different levels and sources of noise in real-world scenarios. Lower values are better for <em>mRRE</em> and <em>mRTE</em> ( $\downarrow$), and higher values are better for $SuccessRate$ ($\uparrow$). Subscripts GT, PP, and SC denote ground-truth boxes, PointPillars detector boxes, and SECOND detector boxes, respectively. The superscript k signifies the use of top-k dimension-sorted boxes, while ∞ indicates use all boxes provided. The <strong>best</strong> and <u>second-best</u> results are highlighted in each section.</h6>
-    <h6>†: For CBM , our reimplementation (`benchmark/initial_value_method_test.py:255`) achieves comparable accuracy but significantly lower success rates under $ SuccessRate@\lambda $. </h6>
-    <h6>‡: V2I-Calib++ entries without parentheses (e.g., V2I-Calib++<sub>GT</sub><sup>25</sup>) use the proposed Weighted SVD (wSVD) by default. Comparisons between wSVD, mSVD, and hSVD strategies (Section 4.4) validate wSVD's superior robustness.</h6>
+    <h6>†: For CBM , our internal reimplementation achieves comparable accuracy but significantly lower success rates under $ SuccessRate@\lambda $. </h6>
+    <h6>‡: V2X-Reg++ entries without parentheses (e.g., V2X-Reg++<sub>GT</sub><sup>25</sup>) use the proposed Weighted SVD (wSVD) by default. Comparisons between wSVD, mSVD, and hSVD strategies (Section 4.4) validate wSVD's superior robustness.</h6>
 
 
 ## Getting Started
@@ -491,18 +528,23 @@ This code is mainly developed under Ubuntu 20.04. We use anaconda3 with Python 3
 
 After cloning this repo, please run:
 ```
-source setup.sh
+source legacy/setup.sh
 ```
 
 ### Minimal Test
-To test the sample, simply run the following command:
+Use the new object-level pipeline driver:
 ```
-python test.py --test_type single 
+python tools/run_calibration.py --config configs/pipeline.yaml --print
 ```
+This command loads ground-truth boxes, runs the filtering/matching/SVD stack, prints the summary metrics, and stores detailed logs under `outputs/<timestamp>/`.
 
 
 ### Batch Test
-For batch testing, additional data preparation is required. This process is also included in the test.py file.
+Larger experiments use the same entrypoint with the desired config, e.g.:
+```
+python tools/run_calibration.py --config configs/pipeline_detection.yaml
+```
+By default each run creates `outputs/<tag>/metrics.json` and `outputs/<tag>/matches.jsonl`. Use `python tools/analyze_matches.py --matches outputs/<tag>/matches.jsonl` to inspect success rates at different thresholds.
 
 #### Download data and organize as follows
 
@@ -548,17 +590,19 @@ mkdir ./data/DAIR-V2X
 ln -s ${DAIR-V2X-C_DATASET_ROOT}/cooperative-vehicle-infrastructure ${v2i-calib_root}/v2i-calib/data/DAIR-V2X
 ```
 
-#### Run Test Command
+#### Run Pipeline Command
 
 ```
-python test.py --test_type batch
+python tools/run_calibration.py --config configs/pipeline.yaml
 ```
-The results are detailed in `Log/xx.log`. Execute `Log/analyze.py` to analyze the batch test results. The final results will be available in `analysis_results.csv`. You will find these results to be superior to those previously discussed or those presented in the paper :-) 
-
+Set `output.tag` inside the YAML (or override via CLI) to control where metrics are written. Use the detection-specific config for detector boxes:
+```
+python tools/run_calibration.py --config configs/pipeline_detection.yaml
+```
 
 ### Explanation of Key Configuration Parameters
 
-The configuration parameters are located in `config/config.yaml`. To use the oIoU metric, set `core_similarity_component_list = [iou]`. To use the oDist metric, set `core_similarity_component_list = [centerpoint_distance, vertex_distance]`
+The primary configuration lives in `configs/pipeline.yaml` (and `configs/pipeline_detection.yaml` for detector boxes). Adjust `filters` for box selection, `matching` for oIoU/oDist components, and `solver` for stability gates. To switch metrics, edit `matching.core_components`, e.g., `['iou']` for oIoU or `['centerpoint_distance', 'vertex_distance']` for oDist.
 
 
 ## Acknowledgment
@@ -583,7 +627,7 @@ If you find our work or this repo useful, please cite:
 ```
 ```
 @article{qu2024v2iplus,
-  title={V2I-Calib++: A Multi-terminal Spatial Calibration Approach in Urban Intersections for Collaborative Perception},
+  title={V2X-Reg++: A Multi-terminal Spatial Calibration Approach in Urban Intersections for Collaborative Perception},
   author={Qu, Qianxin and Zhang, Xinyu and Xiong, Yijin and Guo, Shichun and Song, Ziqiang and Li, Jun},
   journal={arXiv preprint arXiv:2410.11008},
   year={2024}

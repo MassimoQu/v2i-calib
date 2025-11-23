@@ -1,0 +1,30 @@
+data: 
+  type: DAIR-V2X
+  data_root_path: ./data/DAIR-V2X/cooperative-vehicle-infrastructure
+  data_info_path: ./data/DAIR-V2X/cooperative-vehicle-infrastructure/cooperative/data_info.json
+
+evaluation:
+  rot_thd: 5
+  trans_thd: 2
+
+infra:
+  fpfh:
+    voxel_size: 0.6
+    radius_normal: 1.2
+    radius_feature: 3.0
+
+vehicle:
+  fpfh:
+    voxel_size: 0.5
+    radius_normal: 1.0
+    radius_feature: 2.5
+
+post_refine:
+  icp:
+    enabled: true
+    max_correspondence_distance: 1.5
+    max_iterations: 60
+    method: point_to_plane
+
+teaser:
+  noise_bound: 1.0

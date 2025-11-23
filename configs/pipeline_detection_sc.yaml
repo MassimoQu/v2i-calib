@@ -1,0 +1,46 @@
+data:
+  dataset: DAIR-V2X
+  split: test
+  data_info_path: data/DAIR-V2X/cooperative/test_data_info.json
+  data_root: data/DAIR-V2X/cooperative-vehicle-infrastructure
+  detection_cache: data/DAIR-V2X/detected/dairv2x-second_uncertainty/test/stage1_boxes.json
+  use_detection: true
+  noise:
+    pos_std: 0
+    rot_std: 0
+  max_samples: 1800
+filters:
+  top_k: 15
+  distance_m: 120
+  priority_categories: [bus, truck, car]
+matching:
+  strategy: ['category', 'core']
+  core_components: ['centerpoint_distance', 'vertex_distance']
+  filter_strategy: thresholdRetained
+  filter_threshold: 4
+  matches2extrinsic: weightedSVD
+  svd_strategy: svd_with_match
+  distance_thresholds:
+    truck: 1.5
+    van: 1.5
+    bus: 1.5
+    car: 1.0
+    trafficcone: 0.5
+    pedestrian: 0.5
+    cyclist: 0.5
+    motorcyclist: 0.5
+    tricylist: 0.5
+    barrawlist: 0.5
+    detected: 1.0
+  prior_weight: 0.0
+  parallel_flag: false
+  corresponding_parallel: false
+solver:
+  stability_gate: 3
+  max_iterations: 1
+evaluation:
+  success_thresholds: [1.0, 2.0, 3.0]
+  time_verbose: false
+output:
+  root_dir: outputs
+  tag: dair_v2xregpp_sc15_test
