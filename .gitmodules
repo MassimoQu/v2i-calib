@@ -12,7 +12,7 @@
 	url = https://github.com/MIT-SPARK/TEASER-plusplus.git
 [submodule "HEAL"]
 	path = HEAL
-	url = https://github.com/yifanlu0227/HEAL.git
+	url = https://github.com/MassimoQu/coop_calib.git
 [submodule "benchmarks/third_party/VIPS_co_visible_object_matching"]
 	path = benchmarks/third_party/VIPS_co_visible_object_matching
 	url = https://github.com/255doesnotexist/VIPS_co_visible_object_matching.git
