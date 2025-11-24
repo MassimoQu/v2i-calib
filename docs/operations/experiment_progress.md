@@ -1,5 +1,11 @@
 # V2X-Reg++ 实验复现进度（更新时间：2025-11-23）
 
+## 0. 数据与配置兼容说明
+
+- **Top-3000 DAIR 样本**：`data/data_info_top3000.json` 是从官方 6 616 帧中按 GT box 数量排序后筛出的 3 000 帧子集。任何 GT 实验均以此作为 `data_info_path`，确保与论文的“3k 帧”设定一致。
+- **通用 config**：`configs/pipeline_top3000.yaml` 继承自 `configs/pipeline.yaml`，仅将 `data.data_info_path` 指向上述文件、`max_samples=3000`、`success_thresholds=[1,2,3]`。后续所有 DAIR V2X-Reg/V2X-Reg++ 变体都在此基础上覆写 `top_k`、`core_components` 等字段。
+- **云端/多卡运行**：每次 run 使用命令 `nohup ~/miniconda3/bin/python tools/run_dair_pipeline_experiments.py --config configs/pipeline_top3000.yaml --tags <tag> > logs/dair_runs/<tag>.log 2>&1 &`. 同一项目可横向复制多份命令，分别设置 `CUDA_VISIBLE_DEVICES`，便于 10×3090 服务器并行跑不同配置。日志、输出目录皆独立，兼容其它 Codex 对检测模型训练脚本的改动。
+
 ## 1. V2X-Reg / V2X-Reg++（DAIR-V2X，Table III 主表）
 
 | 配置 | `success@1m` | `success@2m` | 平均耗时 | 备注 |

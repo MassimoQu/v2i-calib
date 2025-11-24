@@ -29,8 +29,6 @@ EXPERIMENTS: List[Dict] = [
         'description': 'V2X-Reg++ with GT boxes, keep all boxes',
         'overrides': {
             'filters.top_k': 0,
-            'matching.parallel_flag': True,
-            'matching.corresponding_parallel': True,
         },
     },
     {
