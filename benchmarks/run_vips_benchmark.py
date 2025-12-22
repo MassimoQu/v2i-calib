@@ -43,7 +43,7 @@ from matching import find_optimal_matching  # type: ignore  # pylint: disable=im
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Run VIPS graph matching baseline on DAIR-V2X.")
-    parser.add_argument("--config", type=str, default="configs/pipeline_hkust.yaml")
+    parser.add_argument("--config", type=str, default="configs/pipeline.yaml")
     parser.add_argument("--start", type=int, default=0)
     parser.add_argument("--max-pairs", type=int, default=30)
     parser.add_argument("--output-tag", type=str, default=None)

@@ -2,8 +2,6 @@
 # Kent 2018/12
 
 import numpy as np
-from scipy.spatial import ConvexHull
-
 def polygon_clip(subjectPolygon, clipPolygon):
    """ Clip a polygon with another polygon.
 
@@ -57,16 +55,17 @@ def poly_area(x,y):
     return 0.5*np.abs(np.dot(x,np.roll(y,1))-np.dot(y,np.roll(x,1)))
 
 def convex_hull_intersection(p1, p2):
-    """ Compute area of two convex hull's intersection area.
-        p1,p2 are a list of (x,y) tuples of hull vertices.
-        return a list of (x,y) for the intersection and its volume
+    """Compute area of two convex hulls' intersection.
+
+    The input hulls are already convex; clipping preserves convexity so we can
+    skip an extra convex-hull solve and directly take the polygon area.
     """
-    inter_p = polygon_clip(p1,p2)
-    if inter_p is not None:
-        hull_inter = ConvexHull(inter_p)
-        return inter_p, hull_inter.volume
-    else:
-        return None, 0.0  
+    inter_p = polygon_clip(p1, p2)
+    if inter_p is None or len(inter_p) < 3:
+        return None, 0.0
+    inter_arr = np.asarray(inter_p)
+    area = poly_area(inter_arr[:, 0], inter_arr[:, 1])
+    return inter_p, area
 
 def box3d_vol(corners):
     ''' corners: (8,3) no assumption on axis direction '''

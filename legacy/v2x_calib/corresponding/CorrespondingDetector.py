@@ -4,7 +4,6 @@ sys.path.append(str(Path(__file__).parent.parent))
 import numpy as np
 from collections import defaultdict
 import numpy as np
-from sklearn.neighbors import KDTree
 from ..utils import cal_3dIoU, get_volume_from_bbox3d_8_3, get_xyz_from_bbox3d_8_3
 
 class CorrespondingDetector():
@@ -131,6 +130,13 @@ class CorrespondingDetector():
         2) KD-Tree 查找候选
         3) 全局贪心配对
         """
+        try:
+            from sklearn.neighbors import KDTree
+        except ModuleNotFoundError as e:
+            raise ModuleNotFoundError(
+                "Parallel distance matching requires `scikit-learn` (e.g. `pip install scikit-learn`)."
+            ) from e
+
         # 1. 负阈值（为了 score 越大越好）
         distance_threshold = {t: -thr for t, thr in distance_threshold_.items()}
 

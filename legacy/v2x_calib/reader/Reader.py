@@ -1,7 +1,6 @@
 import os.path as osp
 import os
 import numpy as np
-import open3d as o3d
 import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
@@ -81,6 +80,12 @@ class Reader():
             points = np.fromfile(path_pointcloud, dtype=np.float32).reshape(-1, 4)
             return points[:, :3]
         elif path_pointcloud.endswith('.pcd'):
+            try:
+                import open3d as o3d
+            except ModuleNotFoundError as e:
+                raise ModuleNotFoundError(
+                    "Reading .pcd files requires `open3d` (e.g. `pip install open3d`)."
+                ) from e
             pointpillar = o3d.io.read_point_cloud(path_pointcloud)
             points = np.asarray(pointpillar.points)
             return points

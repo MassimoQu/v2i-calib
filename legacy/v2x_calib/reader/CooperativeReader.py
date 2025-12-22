@@ -20,7 +20,14 @@ class CooperativeReader():
         return osp.join(self.vehicle_reader.data_folder, 'cooperative', 'calib', 'camera_i2v', self.vehicle_reader.vehicle_file_name + '.json')
 
     def get_cooperative_lidar_Rt_i2v(self):
-        lidar_i2v = read_json(self.parse_cooperative_lidar_i2v())
+        path = self.parse_cooperative_lidar_i2v()
+        if not Path(path).exists():
+            raise FileNotFoundError(
+                f"Missing DAIR-V2X cooperative calibration file: {path}. "
+                "Please make sure you have the official cooperative split with "
+                "`cooperative/calib/lidar_i2v/*.json`."
+            )
+        lidar_i2v = read_json(path)
         rotation = lidar_i2v["rotation"]
         translation = lidar_i2v["translation"]
         return rotation, translation

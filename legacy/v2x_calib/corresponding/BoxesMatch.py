@@ -8,7 +8,7 @@ import time
 class BoxesMatch():
 
     def __init__(self,infra_boxes_object_list, vehicle_boxes_object_list, similarity_strategy = ['core', 'category'], true_matches = [], distance_threshold = 3,
-                core_similarity_component = ['centerpoint_distance','vertex_distance'], matches_filter_strategy = 'thresholdRetained' , filter_threshold = 0, svd_starategy = 'svd_with_match', parallel_flag = False, time_veerbose = False, corresponding_parallel=False, descriptor_weight=0.0, descriptor_metric='cosine'):
+                core_similarity_component = ['centerpoint_distance','vertex_distance'], matches_filter_strategy = 'thresholdRetained' , filter_threshold = 0, svd_starategy = 'svd_with_match', parallel_flag = False, time_veerbose = False, corresponding_parallel=False, descriptor_weight=0.0, descriptor_metric='cosine', seed_top_k=0, odist_precision_threshold=None):
         '''
         BoxesMatch is a class to obtain corresponding pairs between two sets of bounding boxes without any prior extrinsics.
         param:
@@ -26,11 +26,13 @@ class BoxesMatch():
         self.matches_filter_strategy = matches_filter_strategy
         self.true_matches = true_matches
         self.distance_threshold = distance_threshold
+        self.odist_precision_threshold = None if odist_precision_threshold is None else float(odist_precision_threshold)
         self.svd_starategy = svd_starategy
         self.parallel_flag = parallel_flag
         self.corresponding_parallel = corresponding_parallel
         self.descriptor_weight = descriptor_weight
         self.descriptor_metric = descriptor_metric
+        self.seed_top_k = int(seed_top_k) if seed_top_k else 0
 
         self.result_matches = []
         self.total_matches = []
@@ -60,37 +62,132 @@ class BoxesMatch():
 
 
     def cal_KP(self):
+        infra_node_num = len(self.infra_boxes_object_list)
+        vehicle_node_num = len(self.vehicle_boxes_object_list)
+        seed_limit = self.seed_top_k
+        if seed_limit > 0:
+            infra_indices = range(min(seed_limit, infra_node_num))
+            vehicle_indices = range(min(seed_limit, vehicle_node_num))
+        else:
+            infra_indices = range(infra_node_num)
+            vehicle_indices = range(vehicle_node_num)
         if 'core' in self.similarity_strategy:
             if self.core_similarity_component == 'iou' or 'iou' in self.core_similarity_component:
-                # KP, norm_KP, max_matches_num = similarity_utils.cal_core_KP_IoU(self.infra_boxes_object_list, self.vehicle_boxes_object_list, category_flag=('category' in self.similarity_strategy))
-                KP, max_matches_num = similarity_utils.cal_core_KP_IoU(self.infra_boxes_object_list, self.vehicle_boxes_object_list, category_flag=('category' in self.similarity_strategy))
+                KP, max_matches_num = similarity_utils.cal_core_KP_IoU_fast(
+                    self.infra_boxes_object_list,
+                    self.vehicle_boxes_object_list,
+                    category_flag=('category' in self.similarity_strategy),
+                    svd_starategy=self.svd_starategy,
+                    infra_indices=infra_indices,
+                    vehicle_indices=vehicle_indices,
+                )
                 self.KP += KP
-                # self.norm_KP += norm_KP
             else:
-                centerpoint_max_matches_num, vertexpoint_max_matches_num = 0, 0
-                if 'centerpoint_distance' in self.core_similarity_component:
-                    # KP_centerpoint, norm_KP_centerpoint, centerpoint_max_matches_num = similarity_utils.cal_core_KP_distance(self.infra_boxes_object_list, self.vehicle_boxes_object_list, core_similarity_component='centerpoint_distance', category_flag=('category' in self.similarity_strategy), distance_threshold=self.distance_threshold)
-                    if self.parallel_flag==1:
-                        KP_centerpoint, centerpoint_max_matches_num = similarity_utils.cal_core_KP_distance_parallel_refactored(self.infra_boxes_object_list, self.vehicle_boxes_object_list, core_similarity_component='centerpoint_distance', category_flag=('category' in self.similarity_strategy), distance_threshold=self.distance_threshold,parallel=self.corresponding_parallel)
-                    elif self.parallel_flag==0:
-                        KP_centerpoint, centerpoint_max_matches_num = similarity_utils.cal_core_KP_distance(self.infra_boxes_object_list, self.vehicle_boxes_object_list, core_similarity_component='centerpoint_distance', category_flag=('category' in self.similarity_strategy), distance_threshold=self.distance_threshold, svd_starategy=self.svd_starategy,parallel=self.corresponding_parallel)
-                    else:  
+                use_centerpoint = 'centerpoint_distance' in self.core_similarity_component
+                use_vertex = 'vertex_distance' in self.core_similarity_component
+                centerpoint_max_matches_num, vertexpoint_max_matches_num = -1, -1
+                fast_centerpoint = fast_vertex = False
+                max_nodes = max(infra_node_num, vehicle_node_num)
+                use_fast_path = self.parallel_flag == 0 and (
+                    not self.corresponding_parallel or max_nodes <= 25
+                )
+
+                if (
+                    use_fast_path
+                    and use_centerpoint
+                    and use_vertex
+                    and self.odist_precision_threshold is not None
+                    and self.odist_precision_threshold > 0
+                ):
+                    KP_odist, fast_max_matches = similarity_utils.cal_core_KP_distance_odist_fast(
+                        self.infra_boxes_object_list,
+                        self.vehicle_boxes_object_list,
+                        category_flag=('category' in self.similarity_strategy),
+                        distance_threshold=self.distance_threshold,
+                        svd_starategy=self.svd_starategy,
+                        precision_threshold=self.odist_precision_threshold,
+                        infra_indices=infra_indices,
+                        vehicle_indices=vehicle_indices,
+                    )
+                    self.KP += KP_odist
+                    centerpoint_max_matches_num = fast_max_matches
+                    vertexpoint_max_matches_num = fast_max_matches
+                    fast_centerpoint = True
+                    fast_vertex = True
+
+                if use_fast_path and (use_centerpoint or use_vertex) and not (fast_centerpoint and fast_vertex):
+                    KP_center, KP_vertex, fast_max_matches = similarity_utils.cal_core_KP_distance_fast_components(
+                        self.infra_boxes_object_list,
+                        self.vehicle_boxes_object_list,
+                        use_centerpoint=use_centerpoint,
+                        use_vertex=use_vertex,
+                        category_flag=('category' in self.similarity_strategy),
+                        distance_threshold=self.distance_threshold,
+                        svd_starategy=self.svd_starategy,
+                        infra_indices=infra_indices,
+                        vehicle_indices=vehicle_indices,
+                    )
+                    if use_centerpoint and KP_center is not None:
+                        self.KP += KP_center
+                        centerpoint_max_matches_num = fast_max_matches
+                        fast_centerpoint = True
+                    if use_vertex and KP_vertex is not None:
+                        self.KP += KP_vertex
+                        vertexpoint_max_matches_num = fast_max_matches
+                        fast_vertex = True
+                        if fast_centerpoint:
+                            self.KP = np.round(self.KP / 2)
+
+                if use_centerpoint and not fast_centerpoint:
+                    if self.parallel_flag == 1:
+                        KP_centerpoint, centerpoint_max_matches_num = similarity_utils.cal_core_KP_distance_parallel_refactored(
+                            self.infra_boxes_object_list,
+                            self.vehicle_boxes_object_list,
+                            core_similarity_component='centerpoint_distance',
+                            category_flag=('category' in self.similarity_strategy),
+                            distance_threshold=self.distance_threshold,
+                            parallel=self.corresponding_parallel,
+                        )
+                    elif self.parallel_flag == 0:
+                        KP_centerpoint, centerpoint_max_matches_num = similarity_utils.cal_core_KP_distance(
+                            self.infra_boxes_object_list,
+                            self.vehicle_boxes_object_list,
+                            core_similarity_component='centerpoint_distance',
+                            category_flag=('category' in self.similarity_strategy),
+                            distance_threshold=self.distance_threshold,
+                            svd_starategy=self.svd_starategy,
+                            parallel=self.corresponding_parallel,
+                        )
+                    else:
                         raise ValueError('parallel_flag should be 0 or 1')
                     self.KP += KP_centerpoint
-                    # self.norm_KP += norm_KP_centerpoint
-                if 'vertex_distance' in self.core_similarity_component:
-                    # KP_vertexpoint, norm_KP_vertexpoint, vertexpoint_max_matches_num = similarity_utils.cal_core_KP_distance(self.infra_boxes_object_list, self.vehicle_boxes_object_list, core_similarity_component='vertex_distance', category_flag=('category' in self.similarity_strategy), distance_threshold=self.distance_threshold)
-                    if self.parallel_flag==1:
-                        KP_vertexpoint, vertexpoint_max_matches_num = similarity_utils.cal_core_KP_distance_parallel_refactored(self.infra_boxes_object_list, self.vehicle_boxes_object_list, core_similarity_component='vertex_distance', category_flag=('category' in self.similarity_strategy), distance_threshold=self.distance_threshold,parallel=self.corresponding_parallel)
-                    elif self.parallel_flag==0:
-                        KP_vertexpoint, vertexpoint_max_matches_num = similarity_utils.cal_core_KP_distance(self.infra_boxes_object_list, self.vehicle_boxes_object_list, core_similarity_component='vertex_distance', category_flag=('category' in self.similarity_strategy), distance_threshold=self.distance_threshold, svd_starategy=self.svd_starategy,parallel=self.corresponding_parallel)
+
+                if use_vertex and not fast_vertex:
+                    if self.parallel_flag == 1:
+                        KP_vertexpoint, vertexpoint_max_matches_num = similarity_utils.cal_core_KP_distance_parallel_refactored(
+                            self.infra_boxes_object_list,
+                            self.vehicle_boxes_object_list,
+                            core_similarity_component='vertex_distance',
+                            category_flag=('category' in self.similarity_strategy),
+                            distance_threshold=self.distance_threshold,
+                            parallel=self.corresponding_parallel,
+                        )
+                    elif self.parallel_flag == 0:
+                        KP_vertexpoint, vertexpoint_max_matches_num = similarity_utils.cal_core_KP_distance(
+                            self.infra_boxes_object_list,
+                            self.vehicle_boxes_object_list,
+                            core_similarity_component='vertex_distance',
+                            category_flag=('category' in self.similarity_strategy),
+                            distance_threshold=self.distance_threshold,
+                            svd_starategy=self.svd_starategy,
+                            parallel=self.corresponding_parallel,
+                        )
                     else:
                         raise ValueError('parallel_flag should be 0 or 1')
                     self.KP += KP_vertexpoint
-                    self.KP = np.round(self.KP / 2)
-                    # self.norm_KP += norm_KP_vertexpoint
-                    # self.norm_KP = np.round(self.norm_KP / 2)
-                
+                    if use_centerpoint:
+                        self.KP = np.round(self.KP / 2)
+
                 max_matches_num = max(centerpoint_max_matches_num, vertexpoint_max_matches_num)
         else:
             max_matches_num = -1

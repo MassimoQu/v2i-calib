@@ -29,6 +29,7 @@ EXPERIMENTS: List[Dict] = [
         'description': 'V2X-Reg++ with GT boxes, keep all boxes',
         'overrides': {
             'filters.top_k': 0,
+            'matching.seed_top_k': 25,
         },
     },
     {
@@ -50,24 +51,6 @@ EXPERIMENTS: List[Dict] = [
         'description': 'V2X-Reg++ with GT boxes, top-10',
         'overrides': {
             'filters.top_k': 10,
-        },
-    },
-    {
-        'tag': 'dair_v2xregpp_pp15',
-        'description': 'V2X-Reg++ with PointPillars detections, top-15',
-        'overrides': {
-            'filters.top_k': 15,
-            'data.use_detection': True,
-            'data.detection_cache': 'data/DAIR-V2X/detected/detected_boxes_test.json',
-        },
-    },
-    {
-        'tag': 'dair_v2xregpp_sc15',
-        'description': 'V2X-Reg++ with SECOND detections, top-15',
-        'overrides': {
-            'filters.top_k': 15,
-            'data.use_detection': True,
-            'data.detection_cache': 'data/DAIR-V2X/detected/dairv2x-second_uncertainty/test/stage1_boxes.json',
         },
     },
     {
@@ -100,7 +83,11 @@ def apply_overrides(cfg, overrides: Dict[str, object]) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description='Run DAIR-V2X pipeline experiments sequentially.')
-    parser.add_argument('--config', default='configs/pipeline.yaml', help='Base pipeline config path.')
+    parser.add_argument(
+        '--config',
+        default='configs/pipeline_top3000.yaml',
+        help='Base pipeline config path (recommended: configs/pipeline_top3000.yaml for Table III GT sweeps).',
+    )
     parser.add_argument(
         '--tags',
         nargs='*',
@@ -122,7 +109,10 @@ def main() -> None:
 
     print('\nAll experiments completed:')
     for tag, summary in results.items():
-        print(f"- {tag}: {summary.get('mRRE@1.0', 0):.3f} deg, {summary.get('mRTE@1.0', 0):.3f} m")
+        succ1 = summary.get('success_at_1m')
+        succ2 = summary.get('success_at_2m')
+        avg_time = summary.get('avg_time')
+        print(f"- {tag}: success@1m={succ1} success@2m={succ2} avg_time={avg_time}")
 
 
 if __name__ == '__main__':

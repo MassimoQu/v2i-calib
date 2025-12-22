@@ -27,7 +27,9 @@ def aggregate_metrics(records: List[FrameMetrics], thresholds: List[float]) -> D
 
     summary['avg_time'] = sum(r.time_cost for r in records) / len(records)
     summary['num_frames'] = len(records)
-    summary['frames_with_matches'] = sum(1 for r in records if r.matches_count > 0)
+    match_counts = [r.matches_count for r in records]
+    summary['frames_with_matches'] = sum(1 for count in match_counts if count > 0)
+    summary['avg_matches'] = sum(match_counts) / len(match_counts)
 
     if not thresholds:
         summary['success_frames'] = len(records)

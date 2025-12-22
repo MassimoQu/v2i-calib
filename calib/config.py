@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 import yaml
 
 
@@ -12,12 +12,7 @@ class DataConfig:
     split: str
     data_info_path: str
     data_root: str
-    detection_cache: Optional[str] = None
-    use_detection: bool = False
-    feature_cache: Optional[str] = None
-    use_features: bool = False
-    feature_field: str = 'feature_corner3d_np_list'
-    noise: Dict[str, float] = field(default_factory=dict)
+    noise: Dict[str, Any] = field(default_factory=dict)
     max_samples: Optional[int] = None
     shuffle_box_vertices: Dict[str, bool] = field(default_factory=dict)
 
@@ -41,6 +36,7 @@ class MatchingConfig:
     matches2extrinsic: str
     svd_strategy: str
     distance_thresholds: Dict[str, float]
+    odist_precision_threshold: Optional[float] = None
     prior_weight: float = 0.0
     parallel_flag: bool = False
     corresponding_parallel: bool = False
@@ -49,6 +45,8 @@ class MatchingConfig:
     descriptor_min_similarity: float = 0.0
     descriptor_max_pairs: int = 50
     descriptor_seed: bool = False
+    seed_top_k: int = 0
+    max_retained_matches: Optional[int] = None
 
 
 @dataclass

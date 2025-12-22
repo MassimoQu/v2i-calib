@@ -118,13 +118,20 @@ class MatchingEngine:
             filter_threshold=self.config.filter_threshold,
             true_matches=available_matches,
             distance_threshold=self.config.distance_thresholds,
+            odist_precision_threshold=getattr(self.config, 'odist_precision_threshold', None),
             svd_starategy=self.config.svd_strategy,
             parallel_flag=int(self.config.parallel_flag),
             corresponding_parallel=self.config.corresponding_parallel,
             descriptor_weight=self.config.descriptor_weight,
             descriptor_metric=self.config.descriptor_metric,
+            seed_top_k=self.config.seed_top_k,
         )
         matches_score = matcher.get_matches_with_score()
+        max_matches = getattr(self.config, 'max_retained_matches', None)
+        if max_matches is not None:
+            max_matches = int(max_matches)
+            if max_matches > 0 and len(matches_score) > max_matches:
+                matches_score = matches_score[:max_matches]
         stability = matcher.get_stability() if matches_score else 0.0
         return matches_score, stability
 

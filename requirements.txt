@@ -1,0 +1,16 @@
+# Core dependencies for the object-level calibration pipeline (`calib/` + `tools/`).
+numpy
+scipy
+pyyaml
+easydict
+pyquaternion
+shapely
+tqdm
+
+# Optional (needed by some baselines under `benchmarks/`):
+# open3d==0.17.*
+# torch
+
+# Optional (only needed for specific legacy/analysis utilities):
+# scikit-learn  # KDTree-based corresponding matcher (`corresponding_parallel: true`)
+# matplotlib    # debug plots in `legacy/v2x_calib/corresponding/similarity_utils.py`

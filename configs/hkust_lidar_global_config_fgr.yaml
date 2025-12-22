@@ -3,7 +3,7 @@ data:
 
   # if the dataset is DAIR-V2X
   data_root_path: ./data/DAIR-V2X/cooperative-vehicle-infrastructure
-  data_info_path: ./data/DAIR-V2X/cooperative/selected_data_info.json
+  data_info_path: ./data/DAIR-V2X/cooperative-vehicle-infrastructure/cooperative/data_info.json
 
 
 evaluation:

@@ -3,8 +3,6 @@ data:
   split: test
   data_info_path: data/DAIR-V2X/cooperative-vehicle-infrastructure/cooperative/data_info.json
   data_root: data/DAIR-V2X/cooperative-vehicle-infrastructure
-  detection_cache: data/DAIR-V2X/detected/detected_boxes_test.json
-  use_detection: false
   noise:
     pos_std: 0
     rot_std: 0

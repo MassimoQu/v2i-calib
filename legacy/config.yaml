@@ -4,10 +4,7 @@ data:
 
   # if the dataset is DAIR-V2X
   data_root_path: ./data/DAIR-V2X/cooperative-vehicle-infrastructure
-  # data_root_path: /media/admin123/82b1c917-b440-495b-b677-1e8f51331722/mamba/old-dair/cooperative-vehicle-infrastructure/cooperative-vehicle-infrastructure/
-  
-  data_info_path: ./data/DAIR-V2X/cooperative-vehicle-infrastructure/cooperative/selected_data_info.json
-  # data_info_path: /media/admin123/82b1c917-b440-495b-b677-1e8f51331722/mamba/old-dair/cooperative-vehicle-infrastructure/cooperative-vehicle-infrastructure/cooperative/data_info.json
+  data_info_path: ./data/DAIR-V2X/cooperative-vehicle-infrastructure/cooperative/data_info.json
 
   # if the dataset is V2X-Sim
   noise:

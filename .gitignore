@@ -177,7 +177,8 @@ logs/
 static/visuals/
 
 # Dataset copies / detection caches
-data/DAIR-V2X/cooperative-vehicle-infrastructure/
+# (Users should symlink or copy the DAIR-V2X dataset into these locations.)
+data/DAIR-V2X/cooperative-vehicle-infrastructure
 data/DAIR-V2X/cooperative/
 data/DAIR-V2X/detected/
 data/V2XSim2/
@@ -189,3 +190,8 @@ analysis_results.csv
 *.log.jsonl
 
 checkpoints/
+
+.micromamba/
+info/
+micromamba.tar.bz2
+bin
