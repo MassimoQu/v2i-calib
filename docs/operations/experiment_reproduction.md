@@ -35,7 +35,12 @@ ln -s /path/to/cooperative-vehicle-infrastructure data/DAIR-V2X/cooperative-vehi
   python tools/run_calibration.py --config configs/pipeline.yaml --print
   ```
 
-- Table III GT sweeps (Top-3000 subset):
+- Paper-aligned Table III (DAIR-V2X, GT rows) on the provided 3737-frame subset:
+  ```bash
+  python tools/run_dair_pipeline_experiments.py --config configs/pipeline_paper3737.yaml
+  ```
+
+- Fast sweeps (Top-3000 subset, for debugging / quick iteration):
   ```bash
   python tools/run_dair_pipeline_experiments.py --config configs/pipeline_top3000.yaml
   ```
@@ -43,6 +48,10 @@ ln -s /path/to/cooperative-vehicle-infrastructure data/DAIR-V2X/cooperative-vehi
 Outputs are written to `outputs/<tag>/`:
 - `metrics.json`: aggregated metrics + avg runtime
 - `matches.jsonl`: per-frame timing + match details
+
+Notes:
+- `success_at_{λ}m` uses the paper-aligned criterion: `RTE < λ (m)` **and** `RRE < λ (deg)`.
+- `success_te_only_at_{λ}m` is kept as a TE-only debug indicator.
 
 ## 4. Baselines (optional)
 

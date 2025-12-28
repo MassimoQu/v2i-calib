@@ -17,6 +17,8 @@ Two variants are included:
 - **V2I-Calib**: oIoU-based association (IROS 2024).
 - **V2X-Reg++**: distance-based association (IEEE T-ITS).
 
+This public release focuses on the **paper-aligned object-level pipeline** (DAIR-V2X, GT boxes) and the configs/scripts needed to reproduce the corresponding Table III GT rows. Additional detection-based variants and benchmark alignments will be released after cleaning up caches and reproduction logs.
+
 ## Installation
 
 ```bash
@@ -64,7 +66,12 @@ Notes:
   python tools/run_calibration.py --config configs/pipeline.yaml --print
   ```
 
-- Table III GT sweeps (Top-3000 subset):
+- Paper-aligned Table III (DAIR-V2X, GT rows) on the provided 3737-frame subset:
+  ```bash
+  python tools/run_dair_pipeline_experiments.py --config configs/pipeline_paper3737.yaml
+  ```
+
+- Fast sweeps (Top-3000 subset, for debugging / quick iteration):
   ```bash
   python tools/run_dair_pipeline_experiments.py --config configs/pipeline_top3000.yaml
   ```
