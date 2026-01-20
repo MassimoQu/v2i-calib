@@ -4,19 +4,23 @@ This page is the **public-facing** experiment entrypoint (minimal + reproducible
 
 ## 1. DAIR-V2X Table III (GT sweeps)
 
-The paper’s GT sweeps can be run using the Top-3000 subset config:
-- Base config: `configs/pipeline_top3000.yaml`
-- Subset list: `data/data_info_top3000.json`
+The paper’s GT sweeps can be run on the 3737-frame subset:
+- Base config: `configs/pipeline_paper3737.yaml`
+- Subset list: `data/data_info_dair_paper3737.json`
 
 Run all GT experiments (V2X-Reg++ / V2X-Reg and SVD variants):
 ```bash
-python tools/run_dair_pipeline_experiments.py --config configs/pipeline_top3000.yaml
+python tools/run_dair_pipeline_experiments.py --config configs/pipeline_paper3737.yaml
 ```
 
 Or run a single config:
 ```bash
-python tools/run_calibration.py --config configs/pipeline_top3000.yaml --print
+python tools/run_calibration.py --config configs/pipeline_paper3737.yaml --print
 ```
+
+For quick iteration, you can use the Top-3000 subset:
+- Base config: `configs/pipeline_top3000.yaml`
+- Subset list: `data/data_info_top3000.json`
 
 All outputs are written to `outputs/<tag>/` with:
 - `metrics.json`: aggregated success/mRE/mTE + avg runtime

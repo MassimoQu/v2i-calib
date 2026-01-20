@@ -85,8 +85,11 @@ def main() -> None:
     parser = argparse.ArgumentParser(description='Run DAIR-V2X pipeline experiments sequentially.')
     parser.add_argument(
         '--config',
-        default='configs/pipeline_top3000.yaml',
-        help='Base pipeline config path (recommended: configs/pipeline_top3000.yaml for Table III GT sweeps).',
+        default='configs/pipeline_paper3737.yaml',
+        help=(
+            'Base pipeline config path (recommended: configs/pipeline_paper3737.yaml for Table III GT sweeps; '
+            'use configs/pipeline_top3000.yaml for quick iteration).'
+        ),
     )
     parser.add_argument(
         '--tags',
