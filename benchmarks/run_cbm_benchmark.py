@@ -43,25 +43,83 @@ from benchmarks.third_party.CBM.CBM_torch import CBM as CBMMatcher
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Run CBM baseline on DAIR-V2X.")
-    parser.add_argument("--config", type=str, default="configs/pipeline.yaml")
+    parser.add_argument("--config", type=str, default="configs/pipeline_hkust.yaml")
     parser.add_argument("--start", type=int, default=0)
     parser.add_argument("--max-pairs", type=int, default=30)
     parser.add_argument("--output-tag", type=str, default=None)
-    parser.add_argument("--trans-noise", type=float, default=2.0,
-                        help="Std of translation noise (meters) applied to initial transform.")
-    parser.add_argument("--rot-noise-deg", type=float, default=10.0,
-                        help="Std of rotation noise (degrees) for XYZ Euler angles.")
-    parser.add_argument("--voxel", type=float, default=0.3,
-                        help="ICP voxel down-sample size.")
-    parser.add_argument("--max-corr", type=float, default=1.5,
-                        help="ICP max correspondence distance.")
+    parser.add_argument(
+        "--log-every",
+        type=int,
+        default=50,
+        help="Log a detailed line every N frames (default: 50).",
+    )
+    parser.add_argument(
+        "--trans-noise",
+        type=float,
+        default=2.0,
+        help="Std of translation noise (meters) applied to initial transform.",
+    )
+    parser.add_argument(
+        "--rot-noise-deg",
+        type=float,
+        default=10.0,
+        help="Std of rotation noise (degrees) for XYZ Euler angles.",
+    )
+    parser.add_argument("--voxel", type=float, default=0.3, help="ICP voxel down-sample size.")
+    parser.add_argument("--max-corr", type=float, default=1.5, help="ICP max correspondence distance.")
     parser.add_argument("--seed", type=int, default=2025)
-    parser.add_argument("--use-prediction", action="store_true",
-                        help="Use detection results (if available) instead of GT boxes.")
-    parser.add_argument("--identity-init", action="store_true",
-                        help="Ignore GT init and feed identity transform into CBM.")
-    parser.add_argument("--skip-icp", action="store_true",
-                        help="Skip point cloud ICP refinement; use SVD pose directly.")
+    parser.add_argument(
+        "--sigma1-deg",
+        type=float,
+        default=10.0,
+        help="CBM sigma1 (deg) for orientation similarity (default: 10).",
+    )
+    parser.add_argument("--sigma2", type=float, default=3.0, help="CBM sigma2 (m) for local matching (default: 3).")
+    parser.add_argument("--sigma3", type=float, default=1.0, help="CBM sigma3 (m) for global matching (default: 1).")
+    parser.add_argument(
+        "--absolute-dis-lim",
+        type=float,
+        default=20.0,
+        help="CBM absolute distance limit (m) in global matching (default: 20).",
+    )
+    parser.add_argument(
+        "--use-prediction",
+        action="store_true",
+        help="Use detection results (if available) instead of GT boxes.",
+    )
+    parser.add_argument("--identity-init", action="store_true", help="Ignore GT init and feed identity transform into CBM.")
+    parser.add_argument(
+        "--init-source",
+        type=str,
+        default="unadjusted",
+        choices=["gt", "unadjusted"],
+        help="Base initial transform when adding noise. "
+        "'gt' uses the cooperative ground truth; "
+        "'unadjusted' uses the infrastructure pose without applying its per-frame relative_error.",
+    )
+    parser.add_argument(
+        "--min-matches",
+        type=int,
+        default=0,
+        help="Count frames with fewer than this many CBM matches as failure "
+        "(default: 0, i.e. accept any non-empty match set).",
+    )
+    parser.add_argument(
+        "--match-distance-thr",
+        type=float,
+        default=None,
+        help="Optional post-CBM distance gate (meters). If set, discard matches whose "
+        "vehicle center and transformed infrastructure center differ more than this threshold "
+        "under the provided initial transform.",
+    )
+    parser.add_argument("--skip-icp", action="store_true", help="Skip point cloud ICP refinement; use SVD pose directly.")
+    parser.add_argument(
+        "--top-k",
+        type=int,
+        default=0,
+        help="Optionally keep only the top-K largest boxes (by volume) on each side. "
+        "0 disables the limit (default: 0).",
+    )
     return parser.parse_args()
 
 
@@ -97,6 +155,20 @@ def bbox_object_to_state(bbox_obj) -> Tuple[np.ndarray, np.ndarray]:
     return center, (l, w, h), yaw, corners
 
 
+def _box_volume(bbox_obj) -> float:
+    corners = bbox_obj.get_bbox3d_8_3()
+    l, w, h = get_lwh_from_bbox3d_8_3(corners)
+    return float(l * w * h)
+
+
+def _top_k_by_volume(boxes, k: int):
+    if k <= 0 or len(boxes) <= k:
+        return boxes
+    order = sorted(range(len(boxes)), key=lambda i: _box_volume(boxes[i]), reverse=True)
+    keep = set(order[:k])
+    return [boxes[i] for i in range(len(boxes)) if i in keep]
+
+
 def boxes_to_array(bbox_list) -> np.ndarray:
     states = []
     for bbox in bbox_list:
@@ -105,6 +177,28 @@ def boxes_to_array(bbox_list) -> np.ndarray:
     if not states:
         return np.zeros((0, 7), dtype=np.float32)
     return np.asarray(states, dtype=np.float32)
+
+
+def transform_points(T: np.ndarray, points: np.ndarray) -> np.ndarray:
+    pts_h = np.hstack([points, np.ones((points.shape[0], 1))])
+    transformed = (T @ pts_h.T).T
+    return transformed[:, :3]
+
+
+def filter_matches_by_distance(matches: np.ndarray, infra_boxes, veh_boxes, T_init: np.ndarray, thr: float) -> np.ndarray:
+    if matches.size == 0:
+        return matches
+    filtered: List[List[int]] = []
+    transformed_cache: dict[int, np.ndarray] = {}
+    for veh_idx, infra_idx in matches:
+        veh_center, _, _, _ = bbox_object_to_state(veh_boxes[int(veh_idx)])
+        if int(infra_idx) not in transformed_cache:
+            infra_center, _, _, _ = bbox_object_to_state(infra_boxes[int(infra_idx)])
+            transformed_cache[int(infra_idx)] = transform_points(T_init, infra_center.reshape(1, 3))[0]
+        infra_center_t = transformed_cache[int(infra_idx)]
+        if np.linalg.norm(infra_center_t - veh_center) <= thr:
+            filtered.append([int(veh_idx), int(infra_idx)])
+    return np.asarray(filtered, dtype=np.int32)
 
 
 def estimate_pose_from_matches(infra_boxes, veh_boxes, pairs: np.ndarray) -> Tuple[np.ndarray, int]:
@@ -139,8 +233,7 @@ def estimate_pose_from_matches(infra_boxes, veh_boxes, pairs: np.ndarray) -> Tup
     return T, src.shape[0]
 
 
-def refine_with_icp(T_init: np.ndarray, infra_points: np.ndarray, veh_points: np.ndarray,
-                    voxel: float, max_corr: float) -> np.ndarray:
+def refine_with_icp(T_init: np.ndarray, infra_points: np.ndarray, veh_points: np.ndarray, voxel: float, max_corr: float) -> np.ndarray:
     src = o3d.geometry.PointCloud()
     src.points = o3d.utility.Vector3dVector(infra_points)
     tgt = o3d.geometry.PointCloud()
@@ -150,9 +243,13 @@ def refine_with_icp(T_init: np.ndarray, infra_points: np.ndarray, veh_points: np
         tgt = tgt.voxel_down_sample(voxel)
     tgt.estimate_normals(o3d.geometry.KDTreeSearchParamHybrid(radius=voxel * 2.0, max_nn=30))
     result = o3d.pipelines.registration.registration_icp(
-        src, tgt, max_corr, T_init,
+        src,
+        tgt,
+        max_corr,
+        T_init,
         o3d.pipelines.registration.TransformationEstimationPointToPlane(),
-        o3d.pipelines.registration.ICPConvergenceCriteria(max_iteration=50))
+        o3d.pipelines.registration.ICPConvergenceCriteria(max_iteration=50),
+    )
     return result.transformation
 
 
@@ -179,89 +276,225 @@ def main():
         path_data_folder=data_root,
     )
     cbm_default_args = argparse.Namespace(
-        sigma1=10 * math.pi / 180,
-        sigma2=3.0,
-        sigma3=1.0,
-        absolute_dis_lim=20.0,
+        sigma1=float(args.sigma1_deg) * math.pi / 180.0,
+        sigma2=float(args.sigma2),
+        sigma3=float(args.sigma3),
+        absolute_dis_lim=float(args.absolute_dis_lim),
     )
     cbm_matcher = CBMMatcher(args=cbm_default_args)
-    rng = np.random.default_rng(args.seed)
 
     records: List[FrameMetrics] = []
     processed = 0
     start_idx = args.start
     end_idx = min(start_idx + args.max_pairs, len(reader.infra_file_names))
 
-    with matches_path.open("w", encoding="utf-8") as f_match:
+    # Line-buffered so long runs keep durable progress even if interrupted.
+    with matches_path.open("w", encoding="utf-8", buffering=1) as f_match:
+
+        def append_failure(
+            reason: str,
+            elapsed: float,
+            infra_id: str,
+            veh_id: str,
+            *,
+            idx: int,
+            init_RE: float | None = None,
+            init_TE: float | None = None,
+        ):
+            logger.info(f"[{infra_id}-{veh_id}] CBM failure counted: {reason}")
+            f_match.write(
+                json.dumps(
+                    {
+                        "idx": int(idx),
+                        "infra_id": infra_id,
+                        "veh_id": veh_id,
+                        "status": "failure",
+                        "failure_reason": reason,
+                        "RE": 180.0,
+                        "TE": 1e6,
+                        "init_RE": init_RE,
+                        "init_TE": init_TE,
+                        "num_matches": 0,
+                        "num_matches_raw": 0,
+                        "num_points": 0,
+                        "time": elapsed,
+                        "best_mode": None,
+                    }
+                )
+                + "\n"
+            )
+            records.append(
+                FrameMetrics(
+                    infra_id=str(infra_id),
+                    veh_id=str(veh_id),
+                    RE=180.0,
+                    TE=1e6,
+                    stability=0.0,
+                    time_cost=elapsed,
+                    matches_count=0,
+                )
+            )
+
         for idx in range(start_idx, end_idx):
             infra_id = reader.infra_file_names[idx]
             veh_id = reader.vehicle_file_names[idx]
             coop = CooperativeReader(infra_id, veh_id, data_root)
+            start_time = perf_counter()
             inf_boxes, veh_boxes = (
                 coop.get_cooperative_infra_vehicle_boxes_object_list_predicted()
-                if args.use_prediction else
-                coop.get_cooperative_infra_vehicle_boxes_object_list()
+                if args.use_prediction
+                else coop.get_cooperative_infra_vehicle_boxes_object_list()
             )
+            if args.top_k and args.top_k > 0:
+                inf_boxes = _top_k_by_volume(inf_boxes, int(args.top_k))
+                veh_boxes = _top_k_by_volume(veh_boxes, int(args.top_k))
             if len(inf_boxes) == 0 or len(veh_boxes) == 0:
-                logger.info(f"[{idx}] Skip {infra_id}-{veh_id}: empty boxes.")
+                elapsed = perf_counter() - start_time
+                logger.info(f"[{idx}] Empty boxes for {infra_id}-{veh_id}. Count as failure.")
+                append_failure("empty boxes", elapsed, infra_id, veh_id, idx=idx)
                 continue
-            inf_pc, veh_pc = coop.get_cooperative_infra_vehicle_pointcloud()
+            inf_pc = veh_pc = None
+            if not args.skip_icp:
+                inf_pc, veh_pc = coop.get_cooperative_infra_vehicle_pointcloud()
             T_true = coop.get_cooperative_T_i2v()
             if args.identity_init:
                 T_init = np.eye(4)
             else:
-                T_init = add_transform_noise(
-                    T_true, args.trans_noise, args.rot_noise_deg, rng)
-            init_RE, init_TE = get_RE_TE_by_compare_T_6DOF_result_true(
-                convert_T_to_6DOF(T_init), convert_T_to_6DOF(T_true))
+                T_init_base = coop.get_cooperative_T_i2v_unadjusted() if args.init_source == "unadjusted" else T_true
+                rng = np.random.default_rng(np.random.SeedSequence([int(args.seed), int(idx)]))
+                T_init = add_transform_noise(T_init_base, args.trans_noise, args.rot_noise_deg, rng)
+            init_RE, init_TE = get_RE_TE_by_compare_T_6DOF_result_true(convert_T_to_6DOF(T_init), convert_T_to_6DOF(T_true))
 
             cav_array = boxes_to_array(inf_boxes)
             ego_array = boxes_to_array(veh_boxes)
-            t_process_start = perf_counter()
             matching = cbm_matcher(ego_array, cav_array, T_init)
             if torch.is_tensor(matching):
                 matching = matching.cpu().numpy()
             if matching is None or matching.size == 0:
+                elapsed = perf_counter() - start_time
                 logger.info(f"[{idx}] CBM returned no matches for {infra_id}-{veh_id}.")
+                append_failure(
+                    "no matches",
+                    elapsed,
+                    infra_id,
+                    veh_id,
+                    idx=idx,
+                    init_RE=float(init_RE),
+                    init_TE=float(init_TE),
+                )
+                processed += 1
+                if processed >= args.max_pairs:
+                    break
+                continue
+            raw_count = int(len(matching))
+            if args.match_distance_thr is not None:
+                matching = filter_matches_by_distance(
+                    np.asarray(matching, dtype=np.int32),
+                    inf_boxes,
+                    veh_boxes,
+                    T_init,
+                    float(args.match_distance_thr),
+                )
+            else:
+                matching = np.asarray(matching, dtype=np.int32)
+            if matching.size == 0:
+                elapsed = perf_counter() - start_time
+                logger.info(f"[{idx}] CBM distance gate removed all matches for {infra_id}-{veh_id}.")
+                append_failure(
+                    "distance gate removed all matches",
+                    elapsed,
+                    infra_id,
+                    veh_id,
+                    idx=idx,
+                    init_RE=float(init_RE),
+                    init_TE=float(init_TE),
+                )
+                processed += 1
+                if processed >= args.max_pairs:
+                    break
+                continue
+            if args.min_matches and len(matching) < int(args.min_matches):
+                elapsed = perf_counter() - start_time
+                logger.info(
+                    f"[{idx}] CBM returned {len(matching)} matches (<{args.min_matches}) "
+                    f"for {infra_id}-{veh_id}. Count as failure."
+                )
+                append_failure(
+                    "insufficient matches",
+                    elapsed,
+                    infra_id,
+                    veh_id,
+                    idx=idx,
+                    init_RE=float(init_RE),
+                    init_TE=float(init_TE),
+                )
+                processed += 1
+                if processed >= args.max_pairs:
+                    break
                 continue
 
             T_svd, num_pts = estimate_pose_from_matches(inf_boxes, veh_boxes, matching)
             if T_svd is None:
+                elapsed = perf_counter() - start_time
                 logger.info(f"[{idx}] Not enough correspondences after CBM for {infra_id}-{veh_id}.")
+                append_failure(
+                    "SVD received < 3 matches",
+                    elapsed,
+                    infra_id,
+                    veh_id,
+                    idx=idx,
+                    init_RE=float(init_RE),
+                    init_TE=float(init_TE),
+                )
+                processed += 1
+                if processed >= args.max_pairs:
+                    break
                 continue
             if args.skip_icp:
                 T_refined = T_svd
             else:
+                assert inf_pc is not None and veh_pc is not None
                 T_refined = refine_with_icp(T_svd, inf_pc, veh_pc, args.voxel, args.max_corr)
-            elapsed = perf_counter() - t_process_start
+            elapsed = perf_counter() - start_time
 
-            RE, TE = get_RE_TE_by_compare_T_6DOF_result_true(
-                convert_T_to_6DOF(T_refined), convert_T_to_6DOF(T_true))
-            logger.info(
-                f"[{idx}] {infra_id}-{veh_id} matches={len(matching)} points={num_pts} "
-                f"RE={RE:.2f} TE={TE:.2f} time={elapsed:.2f}s | init RE={init_RE:.2f} TE={init_TE:.2f}"
+            RE, TE = get_RE_TE_by_compare_T_6DOF_result_true(convert_T_to_6DOF(T_refined), convert_T_to_6DOF(T_true))
+            if args.log_every > 0 and ((idx - start_idx) % args.log_every == 0 or idx == end_idx - 1):
+                logger.info(
+                    f"[{idx}] {infra_id}-{veh_id} matches={len(matching)} (raw {raw_count}) points={num_pts} "
+                    f"RE={RE:.2f} TE={TE:.2f} time={elapsed:.2f}s | init RE={init_RE:.2f} TE={init_TE:.2f}"
+                )
+            f_match.write(
+                json.dumps(
+                    {
+                        "idx": int(idx),
+                        "infra_id": infra_id,
+                        "veh_id": veh_id,
+                        "status": "ok",
+                        "RE": RE,
+                        "TE": TE,
+                        "init_RE": init_RE,
+                        "init_TE": init_TE,
+                        "num_matches": int(len(matching)),
+                        "num_matches_raw": raw_count,
+                        "num_points": int(num_pts),
+                        "time": elapsed,
+                        "best_mode": None,
+                    }
+                )
+                + "\n"
             )
-            f_match.write(json.dumps({
-                "infra_id": infra_id,
-                "veh_id": veh_id,
-                "RE": RE,
-                "TE": TE,
-                "init_RE": init_RE,
-                "init_TE": init_TE,
-                "num_matches": int(len(matching)),
-                "num_points": int(num_pts),
-                "time": elapsed,
-                "best_mode": None,
-            }) + "\n")
 
-            records.append(FrameMetrics(
-                infra_id=str(infra_id),
-                veh_id=str(veh_id),
-                RE=float(RE),
-                TE=float(TE),
-                stability=0.0,
-                time_cost=elapsed,
-            ))
+            records.append(
+                FrameMetrics(
+                    infra_id=str(infra_id),
+                    veh_id=str(veh_id),
+                    RE=float(RE),
+                    TE=float(TE),
+                    stability=0.0,
+                    time_cost=elapsed,
+                    matches_count=int(len(matching)),
+                )
+            )
             processed += 1
             if processed >= args.max_pairs:
                 break

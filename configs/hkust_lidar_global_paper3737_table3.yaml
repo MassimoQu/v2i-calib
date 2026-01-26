@@ -1,0 +1,72 @@
+data:
+  type: DAIR-V2X
+
+  # Paper-aligned DAIR-V2X evaluation subset (|S|=3737).
+  data_root_path: ./data/DAIR-V2X/cooperative-vehicle-infrastructure
+  data_info_path: ./data/data_info_dair_paper3737.json
+
+evaluation:
+  rot_thd: 5
+  trans_thd: 2
+
+infra:
+  fpfh:
+    voxel_size: 0.6
+    radius_normal: 1.2
+    radius_feature: 3.0
+  beam_alignment:
+    enabled: true
+    match_vehicle_angle: true
+    angle_percentiles: [2.0, 98.0]
+    min_points_after_angle: 4000
+    # Table III reproduction: keep all points after angle filtering.
+    subsample_ratio: 1.0
+    random_seed: 3407
+
+vehicle:
+  fpfh:
+    voxel_size: 0.5
+    radius_normal: 1.0
+    radius_feature: 2.5
+
+post_refine:
+  icp:
+    enabled: true
+    max_correspondence_distance: 1.5
+    max_iterations: 60
+    method: point_to_plane
+
+registration_modes:
+  - name: coarse
+    infra_fpfh:
+      voxel_size: 1.0
+      radius_normal: 2.0
+      radius_feature: 5.0
+    vehicle_fpfh:
+      voxel_size: 0.6
+      radius_normal: 1.2
+      radius_feature: 3.0
+  - name: dense
+    infra_fpfh:
+      voxel_size: 0.6
+      radius_normal: 1.2
+      radius_feature: 3.0
+    vehicle_fpfh:
+      voxel_size: 0.5
+      radius_normal: 1.0
+      radius_feature: 2.5
+  - name: ultra_dense
+    infra_fpfh:
+      voxel_size: 0.4
+      radius_normal: 0.8
+      radius_feature: 2.0
+    vehicle_fpfh:
+      voxel_size: 0.4
+      radius_normal: 0.8
+      radius_feature: 2.0
+
+rotation_estimation_algorithm: "GNC_TLS"
+
+teaser:
+  noise_bound: 1.0
+

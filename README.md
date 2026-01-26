@@ -17,7 +17,7 @@ Two variants are included:
 - **V2I-Calib**: oIoU-based association (IROS 2024).
 - **V2X-Reg++**: distance-based association (IEEE T-ITS).
 
-This public release focuses on the **paper-aligned object-level pipeline** (DAIR-V2X, GT boxes) and the configs/scripts needed to reproduce the corresponding Table III GT rows. Additional detection-based variants and benchmark alignments will be released after cleaning up caches and reproduction logs.
+The repo includes the **paper-aligned object-level pipeline** (DAIR-V2X, GT + PP/SC detections) and the configs/scripts needed to reproduce the Table III rows, plus baseline runners under `benchmarks/`.
 
 ## Installation
 
@@ -56,33 +56,41 @@ cooperative-vehicle-infrastructure/
 ```
 
 Notes:
-- The ground-truth transform is loaded from `cooperative/calib/lidar_i2v/*.json` (no extra post-processing in the public pipeline).
+- The ground-truth transform is loaded from `cooperative/calib/lidar_i2v/*.json` (no extra post-processing in the object-level pipeline).
 - Images/point clouds are not required for the default object-level evaluation, but are needed by some baselines in `benchmarks/`.
+- PP/SC detection rows require cached detections under `data/DAIR-V2X/detected/` (see `docs/operations/experiment_reproduction.md`).
 
-## Run (DAIR-V2X)
+## Run (Table III: DAIR-V2X)
 
-- Single run on the official test split (GT boxes):
-  ```bash
-  python tools/run_calibration.py --config configs/pipeline.yaml --print
-  ```
-
-- Paper-aligned Table III (DAIR-V2X, GT rows) on the provided 3737-frame subset:
+- Paper-aligned Table III (DAIR-V2X, GT rows) on the 3737-frame subset:
   ```bash
   python tools/run_dair_pipeline_experiments.py --config configs/pipeline_paper3737.yaml
   ```
 
-- Fast sweeps (Top-3000 subset, for debugging / quick iteration):
+- Single configs (V2X-Reg++ / V2X-Reg, GT15):
   ```bash
-  python tools/run_dair_pipeline_experiments.py --config configs/pipeline_top3000.yaml
+  python tools/run_calibration.py --config configs/pipeline_paper3737.yaml --print
+  python tools/run_calibration.py --config configs/pipeline_paper3737_oiou_gt15_thr4_top6_iter2.yaml --print
+  ```
+
+- PP/SC detection rows (requires detection caches; see `docs/operations/experiment_reproduction.md`):
+  ```bash
+  python tools/run_calibration.py --config configs/pipeline_paper3737_pp15_pcalwh_topkCand15_25_30_35_confexp2_consistency1p5_icp.yaml --print
+  python tools/run_calibration.py --config configs/pipeline_paper3737_sc15_pcalwh_gate1_confexp2_icp.yaml --print
   ```
 
 Outputs are written to `outputs/<tag>/`:
 - `metrics.json`: aggregated metrics + average runtime
 - `matches.jsonl`: per-pair RE/TE, timing and match details
 
+Generate a Table III reproduction table:
+```bash
+python tools/generate_table3_repro_table.py --output table3_results.md
+```
+
 ## Documentation
 
-- Minimal entrypoint: `docs/operations/experiment_progress_public.md`
+- Minimal entrypoint: `docs/operations/experiment_progress.md`
 - Reproduction guide: `docs/operations/experiment_reproduction.md`
 
 ## Citation

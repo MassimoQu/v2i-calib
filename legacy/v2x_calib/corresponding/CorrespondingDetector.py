@@ -6,6 +6,21 @@ from collections import defaultdict
 import numpy as np
 from ..utils import cal_3dIoU, get_volume_from_bbox3d_8_3, get_xyz_from_bbox3d_8_3
 
+_VERTEX_FLIP_INDICES = np.array([2, 3, 0, 1, 6, 7, 4, 5], dtype=np.int64)
+_DIHEDRAL_4 = [
+    (0, 1, 2, 3),
+    (1, 2, 3, 0),
+    (2, 3, 0, 1),
+    (3, 0, 1, 2),
+    (0, 3, 2, 1),
+    (3, 2, 1, 0),
+    (2, 1, 0, 3),
+    (1, 0, 3, 2),
+]
+_VERTEX_DIHEDRAL_PERMS = [
+    np.array(list(p) + [i + 4 for i in p], dtype=np.int64) for p in _DIHEDRAL_4
+]
+
 class CorrespondingDetector():
     '''
     CorrespondingDetector is a class to obtain the extent of spartial alignment between two sets of bounding boxes.
@@ -13,9 +28,18 @@ class CorrespondingDetector():
     param:
         core_similarity_component: 'iou' or 'centerpoint_distance' or 'vertex_distance' or 'overall_distance'
     '''
-    def __init__(self, infra_bboxes_object_list, vehicle_bboxes_object_list, core_similarity_component = 'overall_distance', distance_threshold=3, parallel=False):
+    def __init__(
+        self,
+        infra_bboxes_object_list,
+        vehicle_bboxes_object_list,
+        core_similarity_component='overall_distance',
+        distance_threshold=3,
+        parallel=False,
+        resolve_180_ambiguity: bool = False,
+    ):
         self.infra_bboxes_object_list = infra_bboxes_object_list
         self.vehicle_bboxes_object_list = vehicle_bboxes_object_list
+        self.resolve_180_ambiguity = bool(resolve_180_ambiguity)
 
         self.corresponding_score_dict = {}
         self.Y = 0
@@ -64,6 +88,14 @@ class CorrespondingDetector():
         distance_threshold = {}
         for type, threshold in distance_threshold_.items():
             distance_threshold[type] = -threshold
+        if 'detected' in distance_threshold:
+            fallback_threshold = distance_threshold['detected']
+        elif '__default__' in distance_threshold:
+            fallback_threshold = distance_threshold['__default__']
+        elif distance_threshold:
+            fallback_threshold = min(distance_threshold.values())
+        else:
+            fallback_threshold = -3.0
         for i, infra_bbox_object in enumerate(self.infra_bboxes_object_list):
             for j, vehicle_bbox_object in enumerate(self.vehicle_bboxes_object_list):
                 update_flag = False
@@ -76,7 +108,15 @@ class CorrespondingDetector():
                     if distance_strategy == 'vertexpoint' or 'vertexpoint' in distance_strategy:
                         infra_bbox_vertex = infra_bbox_object.get_bbox3d_8_3()
                         vehicle_bbox_vertex = vehicle_bbox_object.get_bbox3d_8_3()
-                        distance += -np.linalg.norm(infra_bbox_vertex - vehicle_bbox_vertex) / 8
+                        if self.resolve_180_ambiguity:
+                            best = float(np.linalg.norm(infra_bbox_vertex - vehicle_bbox_vertex))
+                            for perm in _VERTEX_DIHEDRAL_PERMS[1:]:
+                                cand = float(np.linalg.norm(infra_bbox_vertex[perm] - vehicle_bbox_vertex))
+                                if cand < best:
+                                    best = cand
+                            distance += -best / 8
+                        else:
+                            distance += -np.linalg.norm(infra_bbox_vertex - vehicle_bbox_vertex) / 8
 
                     if 'centerpoint' in distance_strategy and 'vertexpoint' in distance_strategy:
                         distance /= 2
@@ -84,7 +124,8 @@ class CorrespondingDetector():
                     # print(f'{i} - {j} inf_type:{infra_bbox_object.get_bbox_type()} veh_type:{vehicle_bbox_object.get_bbox_type()} distance: {distance}')
 
                     # 潜在空间换时间的策略
-                    if distance <= distance_threshold[infra_bbox_object.get_bbox_type()] :
+                    threshold = distance_threshold.get(infra_bbox_object.get_bbox_type(), fallback_threshold)
+                    if distance <= threshold:
                         continue
                     elif i in occupation_dict.keys():
                         if distance <= self.corresponding_score_dict[(i, occupation_dict[i])]:
@@ -132,13 +173,20 @@ class CorrespondingDetector():
         """
         try:
             from sklearn.neighbors import KDTree
-        except ModuleNotFoundError as e:
-            raise ModuleNotFoundError(
-                "Parallel distance matching requires `scikit-learn` (e.g. `pip install scikit-learn`)."
-            ) from e
-
+        except ImportError as exc:  # pragma: no cover
+            raise ImportError(
+                "scikit-learn is required when corresponding_parallel=True"
+            ) from exc
         # 1. 负阈值（为了 score 越大越好）
         distance_threshold = {t: -thr for t, thr in distance_threshold_.items()}
+        if 'detected' in distance_threshold:
+            fallback_threshold = distance_threshold['detected']
+        elif '__default__' in distance_threshold:
+            fallback_threshold = distance_threshold['__default__']
+        elif distance_threshold:
+            fallback_threshold = min(distance_threshold.values())
+        else:
+            fallback_threshold = -3.0
 
         # 2. 按 type 分组收集 centerpoints
         infra_by_type = defaultdict(list)
@@ -172,7 +220,7 @@ class CorrespondingDetector():
             tree = KDTree(Q, leaf_size=40)
 
             # 对每个 infra 点，查询所有在阈值内的 vehicle 点
-            thr = abs(distance_threshold[t])  # 正值半径
+            thr = abs(distance_threshold.get(t, fallback_threshold))  # 正值半径
             for idx_p, i in enumerate(infra_idxs):
                 # query_radius 返回索引列表
                 neighbors = tree.query_radius(P[[idx_p]], r=thr)[0]
@@ -188,12 +236,20 @@ class CorrespondingDetector():
                     if 'vertexpoint' in distance_strategy:
                         inf_v = self.infra_bboxes_object_list[i].get_bbox3d_8_3()
                         veh_v = self.vehicle_bboxes_object_list[j].get_bbox3d_8_3()
-                        score += -np.linalg.norm(inf_v - veh_v) / 8
+                        if self.resolve_180_ambiguity:
+                            best = float(np.linalg.norm(inf_v - veh_v))
+                            for perm in _VERTEX_DIHEDRAL_PERMS[1:]:
+                                cand = float(np.linalg.norm(inf_v[perm] - veh_v))
+                                if cand < best:
+                                    best = cand
+                            score += -best / 8
+                        else:
+                            score += -np.linalg.norm(inf_v - veh_v) / 8
                     if 'centerpoint' in distance_strategy and 'vertexpoint' in distance_strategy:
                         score /= 2
 
                     # 只保留超过阈值的
-                    if score > distance_threshold[t]:
+                    if score > distance_threshold.get(t, fallback_threshold):
                         candidates.append((i, j, score))
 
         # 4. 全局按 score 排序，贪心一对一匹配

@@ -294,14 +294,43 @@ def get_extrinsic_from_two_points_weighted_svd_without_match(points1, points2, w
 def get_extrinsic_from_two_3dbox_object(box_object_1, box_object_2, double_check=False):
     points1 = box_object_1.get_bbox3d_8_3()
     points2 = box_object_2.get_bbox3d_8_3()
-    T = get_extrinsic_from_two_points(points1, points2)
-    if double_check:
-        flip_indices = [2, 3, 0, 1, 6, 7, 4, 5]
-        points1_flipped = points1[flip_indices]
-        T2 = get_extrinsic_from_two_points(points1_flipped, points2)
-        if np.linalg.norm(implement_T_points_n_3(T2, points1_flipped) - points2) < np.linalg.norm(implement_T_points_n_3(T, points1) - points2):
-            T = T2
-    return T
+    points1 = np.asarray(points1, dtype=np.float64).reshape(-1, 3)
+    points2 = np.asarray(points2, dtype=np.float64).reshape(-1, 3)
+    if points1.shape != (8, 3) or points2.shape != (8, 3):
+        return get_extrinsic_from_two_points(points1, points2)
+
+    # Baseline: assume the corner order is already consistent.
+    best_points1 = points1
+    best_T = get_extrinsic_from_two_points(best_points1, points2)
+    best_err = float(np.linalg.norm(implement_T_points_n_3(best_T, best_points1) - points2))
+
+    if not double_check:
+        return best_T
+
+    # Detector exports can rotate/reflect the starting corner along the bottom face
+    # (dihedral permutations). Search over D4 permutations on (0,1,2,3) and apply
+    # the same mapping to the top face (4..7).
+    dihedral_4 = [
+        (0, 1, 2, 3),
+        (1, 2, 3, 0),
+        (2, 3, 0, 1),
+        (3, 0, 1, 2),
+        (0, 3, 2, 1),
+        (3, 2, 1, 0),
+        (2, 1, 0, 3),
+        (1, 0, 3, 2),
+    ]
+    for p in dihedral_4:
+        perm = tuple(p) + tuple(i + 4 for i in p)
+        perm_points1 = points1[list(perm)]
+        T = get_extrinsic_from_two_points(perm_points1, points2)
+        err = float(np.linalg.norm(implement_T_points_n_3(T, perm_points1) - points2))
+        if err < best_err:
+            best_err = err
+            best_T = T
+            best_points1 = perm_points1
+
+    return best_T
 
 def get_extrinsic_from_two_3dbox_object_svd_without_match(box_object_1, box_object_2):
     points1 = box_object_1.get_bbox3d_8_3()

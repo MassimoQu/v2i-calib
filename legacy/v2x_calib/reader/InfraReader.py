@@ -3,6 +3,7 @@ import os.path as osp
 import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
+import numpy as np
 from .Reader import Reader
 from .read_utils import read_json
 from ..utils import convert_Rt_to_T
@@ -65,9 +66,24 @@ class InfraReader(Reader):
         translation[1][0] += virtuallidar2world["relative_error"]["delta_y"]
         return rotation, translation
 
+    def get_infra_virtuallidar2world_unadjusted(self):
+        virtuallidar2world = read_json(self.parse_infra_virtuallidar2world_path())
+        rotation = virtuallidar2world["rotation"]
+        translation = virtuallidar2world["translation"]
+        return rotation, translation
+
     def get_infra_lidar2camera(self):
         lidar2camera = read_json(self.parse_infra_virtuallidar2camera_path())
         rotation = lidar2camera["rotation"]
         translation = lidar2camera["translation"]
-        return convert_Rt_to_T(rotation, translation)
+        R = np.asarray(rotation, dtype=np.float64)
+        if R.shape == (3, 3):
+            # Some DAIR-V2X-C virtuallidar_to_camera rotations are not perfectly orthonormal
+            # (e.g., one axis is slightly scaled). Project to the closest valid rotation.
+            U, _, Vt = np.linalg.svd(R)
+            R = U @ Vt
+            if np.linalg.det(R) < 0:
+                U[:, -1] *= -1
+                R = U @ Vt
+        return convert_Rt_to_T(R, translation)
     

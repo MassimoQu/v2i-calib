@@ -43,27 +43,48 @@ from matching import find_optimal_matching  # type: ignore  # pylint: disable=im
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Run VIPS graph matching baseline on DAIR-V2X.")
-    parser.add_argument("--config", type=str, default="configs/pipeline.yaml")
+    parser.add_argument("--config", type=str, default="configs/pipeline_hkust.yaml")
     parser.add_argument("--start", type=int, default=0)
     parser.add_argument("--max-pairs", type=int, default=30)
     parser.add_argument("--output-tag", type=str, default=None)
-    parser.add_argument("--trans-noise", type=float, default=2.0,
-                        help="Std of translation noise (meters) applied to initial transform.")
-    parser.add_argument("--rot-noise-deg", type=float, default=10.0,
-                        help="Std of rotation noise (degrees) for XYZ Euler angles.")
-    parser.add_argument("--voxel", type=float, default=0.3,
-                        help="ICP voxel down-sample size.")
-    parser.add_argument("--max-corr", type=float, default=1.5,
-                        help="ICP max correspondence distance.")
+    parser.add_argument("--log-every", type=int, default=50, help="Log a detailed line every N frames (default: 50).")
+    parser.add_argument(
+        "--trans-noise",
+        type=float,
+        default=2.0,
+        help="Std of translation noise (meters) applied to initial transform.",
+    )
+    parser.add_argument(
+        "--rot-noise-deg",
+        type=float,
+        default=10.0,
+        help="Std of rotation noise (degrees) for XYZ Euler angles.",
+    )
+    parser.add_argument("--voxel", type=float, default=0.3, help="ICP voxel down-sample size.")
+    parser.add_argument("--max-corr", type=float, default=1.5, help="ICP max correspondence distance.")
     parser.add_argument("--seed", type=int, default=2025)
-    parser.add_argument("--use-prediction", action="store_true",
-                        help="Use detection results (if available) instead of GT boxes.")
-    parser.add_argument("--identity-init", action="store_true",
-                        help="Ignore GT init and feed identity transform into VIPS.")
-    parser.add_argument("--skip-icp", action="store_true",
-                        help="Skip point cloud ICP refinement; use SVD pose directly.")
-    parser.add_argument("--match-distance-thr", type=float, default=8.0,
-                        help="Reject VIPS matches whose centers differ more than this threshold (in meters).")
+    parser.add_argument(
+        "--use-prediction",
+        action="store_true",
+        help="Use detection results (if available) instead of GT boxes.",
+    )
+    parser.add_argument("--identity-init", action="store_true", help="Ignore GT init and feed identity transform into VIPS.")
+    parser.add_argument(
+        "--init-source",
+        type=str,
+        default="unadjusted",
+        choices=["gt", "unadjusted"],
+        help="Base initial transform when adding noise. "
+        "'gt' uses the cooperative ground truth; "
+        "'unadjusted' uses the infrastructure pose without applying its per-frame relative_error.",
+    )
+    parser.add_argument("--skip-icp", action="store_true", help="Skip point cloud ICP refinement; use SVD pose directly.")
+    parser.add_argument(
+        "--match-distance-thr",
+        type=float,
+        default=8.0,
+        help="Reject VIPS matches whose centers differ more than this threshold (in meters).",
+    )
     return parser.parse_args()
 
 
@@ -71,8 +92,7 @@ def ensure_dir(path: Path):
     path.mkdir(parents=True, exist_ok=True)
 
 
-def add_transform_noise(T: np.ndarray, trans_std: float, rot_std_deg: float,
-                        rng: np.random.Generator) -> np.ndarray:
+def add_transform_noise(T: np.ndarray, trans_std: float, rot_std_deg: float, rng: np.random.Generator) -> np.ndarray:
     if trans_std <= 0 and rot_std_deg <= 0:
         return T.copy()
     delta_t = rng.normal(scale=trans_std, size=3)
@@ -169,13 +189,14 @@ def run_vips_matching(car1: Dict[str, List], car2: Dict[str, List], threshold: f
     else:
         _, eigvecs = np.linalg.eigh(M)
         w = eigvecs[:, -1]
+    if float(np.max(w)) < float(-np.min(w)):
+        w = -w
     if np.max(w) > np.min(w):
         w = (w - np.min(w)) / (np.max(w) - np.min(w))
     return find_optimal_matching(w, L1, L2, threshold=threshold)
 
 
-def filter_matches_by_distance(matches: np.ndarray, infra_boxes, veh_boxes,
-                               T_init: np.ndarray, thr: float) -> np.ndarray:
+def filter_matches_by_distance(matches: np.ndarray, infra_boxes, veh_boxes, T_init: np.ndarray, thr: float) -> np.ndarray:
     if matches.size == 0:
         return matches
     filtered: List[List[int]] = []
@@ -224,8 +245,7 @@ def estimate_pose_from_matches(infra_boxes, veh_boxes, pairs: np.ndarray) -> Tup
     return T, src.shape[0]
 
 
-def refine_with_icp(T_init: np.ndarray, infra_points: np.ndarray, veh_points: np.ndarray,
-                    voxel: float, max_corr: float) -> np.ndarray:
+def refine_with_icp(T_init: np.ndarray, infra_points: np.ndarray, veh_points: np.ndarray, voxel: float, max_corr: float) -> np.ndarray:
     src = o3d.geometry.PointCloud()
     src.points = o3d.utility.Vector3dVector(infra_points)
     tgt = o3d.geometry.PointCloud()
@@ -235,9 +255,13 @@ def refine_with_icp(T_init: np.ndarray, infra_points: np.ndarray, veh_points: np
         tgt = tgt.voxel_down_sample(voxel)
     tgt.estimate_normals(o3d.geometry.KDTreeSearchParamHybrid(radius=voxel * 2.0, max_nn=30))
     result = o3d.pipelines.registration.registration_icp(
-        src, tgt, max_corr, T_init,
+        src,
+        tgt,
+        max_corr,
+        T_init,
         o3d.pipelines.registration.TransformationEstimationPointToPlane(),
-        o3d.pipelines.registration.ICPConvergenceCriteria(max_iteration=50))
+        o3d.pipelines.registration.ICPConvergenceCriteria(max_iteration=50),
+    )
     return result.transformation
 
 
@@ -263,7 +287,6 @@ def main():
         path_data_info=data_info,
         path_data_folder=data_root,
     )
-    rng = np.random.default_rng(args.seed)
     encoder = CategoryEncoder()
 
     records: List[FrameMetrics] = []
@@ -271,18 +294,51 @@ def main():
     start_idx = args.start
     end_idx = min(start_idx + args.max_pairs, len(reader.infra_file_names))
 
-    def append_failure(reason: str, elapsed: float, infra_id: str, veh_id: str):
-        logger.info(f"[{infra_id}-{veh_id}] VIPS failure counted: {reason}")
-        records.append(FrameMetrics(
-            infra_id=str(infra_id),
-            veh_id=str(veh_id),
-            RE=180.0,
-            TE=1e6,
-            stability=0.0,
-            time_cost=elapsed,
-        ))
+    # Line-buffered so long runs keep durable progress even if interrupted.
+    with matches_path.open("w", encoding="utf-8", buffering=1) as f_match:
 
-    with matches_path.open("w", encoding="utf-8") as f_match:
+        def append_failure(
+            reason: str,
+            elapsed: float,
+            infra_id: str,
+            veh_id: str,
+            *,
+            idx: int,
+            init_RE: float | None = None,
+            init_TE: float | None = None,
+        ):
+            logger.info(f"[{infra_id}-{veh_id}] VIPS failure counted: {reason}")
+            f_match.write(
+                json.dumps(
+                    {
+                        "idx": int(idx),
+                        "infra_id": infra_id,
+                        "veh_id": veh_id,
+                        "status": "failure",
+                        "failure_reason": reason,
+                        "RE": 180.0,
+                        "TE": 1e6,
+                        "init_RE": init_RE,
+                        "init_TE": init_TE,
+                        "num_matches": 0,
+                        "num_points": 0,
+                        "time": elapsed,
+                    }
+                )
+                + "\n"
+            )
+            records.append(
+                FrameMetrics(
+                    infra_id=str(infra_id),
+                    veh_id=str(veh_id),
+                    RE=180.0,
+                    TE=1e6,
+                    stability=0.0,
+                    time_cost=elapsed,
+                    matches_count=0,
+                )
+            )
+
         for idx in range(start_idx, end_idx):
             infra_id = reader.infra_file_names[idx]
             veh_id = reader.vehicle_file_names[idx]
@@ -290,30 +346,41 @@ def main():
             start_time = perf_counter()
             inf_boxes, veh_boxes = (
                 coop.get_cooperative_infra_vehicle_boxes_object_list_predicted()
-                if args.use_prediction else
-                coop.get_cooperative_infra_vehicle_boxes_object_list()
+                if args.use_prediction
+                else coop.get_cooperative_infra_vehicle_boxes_object_list()
             )
             if len(inf_boxes) == 0 or len(veh_boxes) == 0:
-                logger.info(f"[{idx}] Skip {infra_id}-{veh_id}: empty boxes.")
+                elapsed = perf_counter() - start_time
+                logger.info(f"[{idx}] Empty boxes for {infra_id}-{veh_id}. Count as failure.")
+                append_failure("empty boxes", elapsed, infra_id, veh_id, idx=idx)
                 continue
             inf_pc, veh_pc = coop.get_cooperative_infra_vehicle_pointcloud()
             T_true = coop.get_cooperative_T_i2v()
             if args.identity_init:
                 T_init = np.eye(4)
             else:
-                T_init = add_transform_noise(T_true, args.trans_noise, args.rot_noise_deg, rng)
-            init_RE, init_TE = get_RE_TE_by_compare_T_6DOF_result_true(
-                convert_T_to_6DOF(T_init), convert_T_to_6DOF(T_true))
+                T_init_base = coop.get_cooperative_T_i2v_unadjusted() if args.init_source == "unadjusted" else T_true
+                rng = np.random.default_rng(np.random.SeedSequence([int(args.seed), int(idx)]))
+                T_init = add_transform_noise(T_init_base, args.trans_noise, args.rot_noise_deg, rng)
+            init_RE, init_TE = get_RE_TE_by_compare_T_6DOF_result_true(convert_T_to_6DOF(T_init), convert_T_to_6DOF(T_true))
 
             veh_graph = build_car_graph(veh_boxes, encoder, np.eye(4))
             infra_graph = build_car_graph(inf_boxes, encoder, T_init)
 
             try:
                 matches = run_vips_matching(veh_graph, infra_graph)
-            except Exception as exc:  # pragma: no cover - defensive logging
+            except Exception as exc:  # pragma: no cover
                 elapsed = perf_counter() - start_time
                 logger.error(f"[{idx}] VIPS failed on {infra_id}-{veh_id}: {exc}")
-                append_failure("solver exception", elapsed, infra_id, veh_id)
+                append_failure(
+                    "solver exception",
+                    elapsed,
+                    infra_id,
+                    veh_id,
+                    idx=idx,
+                    init_RE=float(init_RE),
+                    init_TE=float(init_TE),
+                )
                 processed += 1
                 if processed >= args.max_pairs:
                     break
@@ -324,7 +391,15 @@ def main():
             if matches.size == 0:
                 elapsed = perf_counter() - start_time
                 logger.info(f"[{idx}] VIPS returned no matches for {infra_id}-{veh_id}.")
-                append_failure("distance gate removed all matches", elapsed, infra_id, veh_id)
+                append_failure(
+                    "distance gate removed all matches",
+                    elapsed,
+                    infra_id,
+                    veh_id,
+                    idx=idx,
+                    init_RE=float(init_RE),
+                    init_TE=float(init_TE),
+                )
                 processed += 1
                 if processed >= args.max_pairs:
                     break
@@ -333,7 +408,15 @@ def main():
             if pose_T is None:
                 elapsed = perf_counter() - start_time
                 logger.info(f"[{idx}] Not enough correspondences after VIPS for {infra_id}-{veh_id}.")
-                append_failure("SVD received < 3 matches", elapsed, infra_id, veh_id)
+                append_failure(
+                    "SVD received < 3 matches",
+                    elapsed,
+                    infra_id,
+                    veh_id,
+                    idx=idx,
+                    init_RE=float(init_RE),
+                    init_TE=float(init_TE),
+                )
                 processed += 1
                 if processed >= args.max_pairs:
                     break
@@ -343,34 +426,43 @@ def main():
             else:
                 T_refined = refine_with_icp(pose_T, inf_pc, veh_pc, args.voxel, args.max_corr)
 
-            RE, TE = get_RE_TE_by_compare_T_6DOF_result_true(
-                convert_T_to_6DOF(T_refined), convert_T_to_6DOF(T_true))
+            RE, TE = get_RE_TE_by_compare_T_6DOF_result_true(convert_T_to_6DOF(T_refined), convert_T_to_6DOF(T_true))
             elapsed = perf_counter() - start_time
-            logger.info(
-                f"[{idx}] {infra_id}-{veh_id} matches={len(matches)} (raw {raw_count}) points={num_pts} "
-                f"RE={RE:.2f} TE={TE:.2f} time={elapsed:.2f}s | init RE={init_RE:.2f} TE={init_TE:.2f}"
+            if args.log_every > 0 and ((idx - start_idx) % args.log_every == 0 or idx == end_idx - 1):
+                logger.info(
+                    f"[{idx}] {infra_id}-{veh_id} matches={len(matches)} (raw {raw_count}) points={num_pts} "
+                    f"RE={RE:.2f} TE={TE:.2f} time={elapsed:.2f}s | init RE={init_RE:.2f} TE={init_TE:.2f}"
+                )
+            f_match.write(
+                json.dumps(
+                    {
+                        "idx": int(idx),
+                        "infra_id": infra_id,
+                        "veh_id": veh_id,
+                        "status": "ok",
+                        "RE": RE,
+                        "TE": TE,
+                        "init_RE": init_RE,
+                        "init_TE": init_TE,
+                        "num_matches": int(len(matches)),
+                        "num_points": int(num_pts),
+                        "time": elapsed,
+                    }
+                )
+                + "\n"
             )
-            f_match.write(json.dumps({
-                "infra_id": infra_id,
-                "veh_id": veh_id,
-                "RE": RE,
-                "TE": TE,
-                "init_RE": init_RE,
-                "init_TE": init_TE,
-                "num_matches": int(len(matches)),
-                "num_points": int(num_pts),
-                "time": elapsed,
-            }) + "\n")
 
-            records.append(FrameMetrics(
-                infra_id=str(infra_id),
-                veh_id=str(veh_id),
-                RE=float(RE),
-                TE=float(TE),
-                stability=0.0,
-                time_cost=elapsed,
-                matches_count=int(len(matches)),
-            ))
+            records.append(
+                FrameMetrics(
+                    infra_id=str(infra_id),
+                    veh_id=str(veh_id),
+                    RE=float(RE),
+                    TE=float(TE),
+                    stability=0.0,
+                    time_cost=elapsed,
+                    matches_count=int(len(matches)),
+                )
+            )
             processed += 1
             if processed >= args.max_pairs:
                 break

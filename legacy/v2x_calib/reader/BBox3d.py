@@ -22,5 +22,13 @@ class BBox3d(BBox):
         return self.descriptor
     
     def copy(self):
-        return BBox3d(self.bbox_type, copy.deepcopy(self.bbox3d_8_3),
-                      self.occluded_state, self.truncated_state, descriptor=copy.deepcopy(self.descriptor))
+        return BBox3d(
+            bbox_type=self.bbox_type,
+            bbox_8_3=copy.deepcopy(self.bbox3d_8_3),
+            bbox_4=copy.deepcopy(self.bbox2d_4),
+            occluded_state=self.occluded_state,
+            truncated_state=self.truncated_state,
+            alpha=self.alpha,
+            confidence=self.confidence,
+            descriptor=copy.deepcopy(self.descriptor),
+        )

@@ -3,6 +3,7 @@ import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 from ..utils import implement_R_t_points_n_3, convert_Rt_to_T
+import numpy as np
 from .read_utils import read_json
 from .InfraReader import InfraReader
 from .VehicleReader import VehicleReader
@@ -19,27 +20,77 @@ class CooperativeReader():
     def parse_cooperative_camera_i2v(self):
         return osp.join(self.vehicle_reader.data_folder, 'cooperative', 'calib', 'camera_i2v', self.vehicle_reader.vehicle_file_name + '.json')
 
+    def _compute_lidar_i2v_from_individual(self):
+        infra_R, infra_t = self.infra_reader.get_infra_virtuallidar2world()
+        veh_R, veh_t = self.vehicle_reader.get_vehicle_novatel2world()
+        lidar2novatel_R, lidar2novatel_t = self.vehicle_reader.get_lidar2novatel()
+
+        T_infra = convert_Rt_to_T(infra_R, infra_t)
+        T_vehicle = convert_Rt_to_T(veh_R, veh_t)
+        T_lidar2novatel = convert_Rt_to_T(lidar2novatel_R, lidar2novatel_t)
+        T_vehicle_lidar2world = T_vehicle @ T_lidar2novatel
+        T_i2v = np.linalg.inv(T_vehicle_lidar2world) @ T_infra
+        rotation = T_i2v[:3, :3].tolist()
+        translation = [[T_i2v[0, 3]], [T_i2v[1, 3]], [T_i2v[2, 3]]]
+        return rotation, translation
+
+    def _compute_lidar_i2v_from_individual_unadjusted(self):
+        infra_R, infra_t = self.infra_reader.get_infra_virtuallidar2world_unadjusted()
+        veh_R, veh_t = self.vehicle_reader.get_vehicle_novatel2world()
+        lidar2novatel_R, lidar2novatel_t = self.vehicle_reader.get_lidar2novatel()
+
+        T_infra = convert_Rt_to_T(infra_R, infra_t)
+        T_vehicle = convert_Rt_to_T(veh_R, veh_t)
+        T_lidar2novatel = convert_Rt_to_T(lidar2novatel_R, lidar2novatel_t)
+        T_vehicle_lidar2world = T_vehicle @ T_lidar2novatel
+        T_i2v = np.linalg.inv(T_vehicle_lidar2world) @ T_infra
+        rotation = T_i2v[:3, :3].tolist()
+        translation = [[T_i2v[0, 3]], [T_i2v[1, 3]], [T_i2v[2, 3]]]
+        return rotation, translation
+
     def get_cooperative_lidar_Rt_i2v(self):
         path = self.parse_cooperative_lidar_i2v()
-        if not Path(path).exists():
-            raise FileNotFoundError(
-                f"Missing DAIR-V2X cooperative calibration file: {path}. "
-                "Please make sure you have the official cooperative split with "
-                "`cooperative/calib/lidar_i2v/*.json`."
-            )
-        lidar_i2v = read_json(path)
-        rotation = lidar_i2v["rotation"]
-        translation = lidar_i2v["translation"]
-        return rotation, translation
+        if Path(path).exists():
+            lidar_i2v = read_json(path)
+            rotation = lidar_i2v["rotation"]
+            translation = lidar_i2v["translation"]
+            return rotation, translation
+        return self._compute_lidar_i2v_from_individual()
+
+    def get_cooperative_lidar_Rt_i2v_unadjusted(self):
+        return self._compute_lidar_i2v_from_individual_unadjusted()
     
     def get_cooperative_camera_Rt_i2v(self):
-        camera_i2v = read_json(self.parse_cooperative_camera_i2v())
-        rotation = camera_i2v["rotation"]
-        translation = camera_i2v["translation"]
+        path = self.parse_cooperative_camera_i2v()
+        if Path(path).exists():
+            camera_i2v = read_json(path)
+            rotation = camera_i2v["rotation"]
+            translation = camera_i2v["translation"]
+            return rotation, translation
+        return self._compute_camera_i2v_from_lidar_i2v()
+
+    def _compute_camera_i2v_from_lidar_i2v(self):
+        """
+        Derive camera extrinsic (infra camera -> vehicle camera) from:
+          - LiDAR i2v (infra LiDAR -> vehicle LiDAR)
+          - Per-agent LiDAR->camera extrinsics
+        """
+        T_lidar_i2v = self.get_cooperative_T_i2v()
+        T_inf_lidar2cam, T_veh_lidar2cam = self.get_infra_vehicle_lidar2camera()
+        if T_inf_lidar2cam is None or T_veh_lidar2cam is None:
+            raise FileNotFoundError('missing lidar2camera calib for camera_i2v fallback')
+        T_cam_i2v = np.asarray(T_veh_lidar2cam) @ np.asarray(T_lidar_i2v) @ np.linalg.inv(
+            np.asarray(T_inf_lidar2cam)
+        )
+        rotation = T_cam_i2v[:3, :3].tolist()
+        translation = [[T_cam_i2v[0, 3]], [T_cam_i2v[1, 3]], [T_cam_i2v[2, 3]]]
         return rotation, translation
 
     def get_cooperative_T_i2v(self):
         return convert_Rt_to_T(*self.get_cooperative_lidar_Rt_i2v())
+
+    def get_cooperative_T_i2v_unadjusted(self):
+        return convert_Rt_to_T(*self.get_cooperative_lidar_Rt_i2v_unadjusted())
     
     def get_cooperative_camera_T_i2v(self):
         return convert_Rt_to_T(*self.get_cooperative_camera_Rt_i2v())

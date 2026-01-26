@@ -1,0 +1,59 @@
+_BASE_CONFIG_: configs/hkust_lidar_global_paper3737_table3.yaml
+
+# Budget ~0.1s: keep voxel=2.0 (better geometry than voxel=3.0) but cap the *feature
+# set* used for matching to reduce KD-tree/query cost without degrading FPFH quality.
+#
+# Requires `benchmarks/hkust_lidar_global_registration_benchmark.py` support for
+# `fpfh.max_features`.
+
+infra:
+  fpfh:
+    voxel_size: 2.0
+    radius_normal: 4.0
+    radius_feature: 8.0
+    max_nn_normal: 20
+    max_nn_feature: 80
+    max_features: 2000
+
+vehicle:
+  fpfh:
+    voxel_size: 2.0
+    radius_normal: 4.0
+    radius_feature: 8.0
+    max_nn_normal: 20
+    max_nn_feature: 80
+    max_features: 2000
+
+registration_modes:
+  - name: budget0p1
+    infra_fpfh:
+      voxel_size: 2.0
+      radius_normal: 4.0
+      radius_feature: 8.0
+      max_nn_normal: 20
+      max_nn_feature: 80
+      max_features: 2000
+    vehicle_fpfh:
+      voxel_size: 2.0
+      radius_normal: 4.0
+      radius_feature: 8.0
+      max_nn_normal: 20
+      max_nn_feature: 80
+      max_features: 2000
+
+post_refine:
+  icp:
+    enabled: true
+    max_correspondence_distance: 4.0
+    max_iterations: 10
+    method: point_to_point
+
+teaser:
+  noise_bound: 2.5
+  mutual_filter: true
+  correspondence_sampling: topk_distance
+  inlier_selection_mode: PMC_EXACT
+  rotation_max_iterations: 60
+  rotation_cost_threshold: 1.0e-06
+  max_correspondences: 1500
+

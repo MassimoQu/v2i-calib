@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Dict, List, Tuple
 
+import numpy as np
+
 from calib.config import FilterConfig
 from v2x_calib.preprocess import Filter3dBoxes
 from v2x_calib.utils import get_volume_from_bbox3d_8_3, get_lwh_from_bbox3d_8_3
@@ -24,9 +26,31 @@ class FilterPipeline:
             self._size_bounds[key] = bounds or {}
 
     def _distance_filter(self, boxes):
+        return self._distance_filter_with_frame(boxes, sensor_frame='lidar')
+
+    def _distance_filter_with_frame(self, boxes, *, sensor_frame: str = 'lidar'):
         if self.config.distance_m <= 0:
             return boxes
-        return Filter3dBoxes(boxes).filter_according_to_distance(self.config.distance_m)
+        if not boxes:
+            return boxes
+        frame = str(sensor_frame or 'lidar').lower().strip()
+        if frame != 'camera':
+            return Filter3dBoxes(boxes).filter_according_to_distance(self.config.distance_m)
+
+        filtered = []
+        dist_limit = float(self.config.distance_m)
+        for box in boxes:
+            try:
+                centroid = np.asarray(box.get_bbox3d_8_3(), dtype=np.float32).mean(axis=0)
+            except Exception:
+                continue
+            if centroid.size < 3:
+                continue
+            # Camera coords: use horizontal+depth (x,z) instead of (x,y).
+            dist = float(np.linalg.norm(centroid[[0, 2]]))
+            if dist <= dist_limit:
+                filtered.append(box)
+        return filtered
 
     def _confidence_filter(self, boxes):
         thr = self.config.min_confidence or 0.0
@@ -75,6 +99,8 @@ class FilterPipeline:
         priority = self._priority_map.get(cat, len(self._priority_map))
         volume = get_volume_from_bbox3d_8_3(box.get_bbox3d_8_3())
         confidence = box.get_confidence()
+        if getattr(self.config, 'confidence_first_for_detected', False) and cat == 'detected':
+            return (priority, -confidence, -volume)
         return (priority, -volume, -confidence)
 
     def _apply_per_category_limits(self, boxes):
@@ -99,8 +125,8 @@ class FilterPipeline:
         selected.extend(leftovers)
         return selected
 
-    def _apply(self, boxes):
-        boxes = self._distance_filter(boxes)
+    def _apply(self, boxes, *, sensor_frame: str = 'lidar'):
+        boxes = self._distance_filter_with_frame(boxes, sensor_frame=sensor_frame)
         boxes = self._confidence_filter(boxes)
         boxes = self._size_filter(boxes)
         boxes = self._apply_per_category_limits(boxes)
@@ -109,9 +135,9 @@ class FilterPipeline:
             sorted_boxes = sorted_boxes[: self.config.top_k]
         return sorted_boxes
 
-    def apply(self, infra_boxes, veh_boxes) -> Tuple[List, List]:
-        filtered_infra = self._apply(infra_boxes)
-        filtered_vehicle = self._apply(veh_boxes)
+    def apply(self, infra_boxes, veh_boxes, *, sensor_frame: str = 'lidar') -> Tuple[List, List]:
+        filtered_infra = self._apply(infra_boxes, sensor_frame=sensor_frame)
+        filtered_vehicle = self._apply(veh_boxes, sensor_frame=sensor_frame)
         return filtered_infra, filtered_vehicle
 
 
